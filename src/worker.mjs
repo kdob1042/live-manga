@@ -8,10 +8,15 @@ export function parseRange(value,size) {
 export default {async fetch(request,env) {
  if(!['GET','HEAD'].includes(request.method))return new Response(null,{status:405,headers:{Allow:'GET, HEAD'}});
  const url=new URL(request.url);
+ if(url.pathname==='/catalog.json'){
+  if(!env.MEDIA)return new Response(null,{status:404});const object=await env.MEDIA.get('catalog.json');if(!object)return new Response(null,{status:404});if(object.size>1024*1024)return new Response(null,{status:502});
+  const catalog=await object.json();if(!Array.isArray(catalog.releases)||!catalog.releases.includes(catalog.current)||!/^[a-zA-Z0-9:_-]{1,128}$/.test(catalog.current))return new Response(null,{status:502});
+  return new Response(request.method==='HEAD'?null:JSON.stringify({current:catalog.current}),{headers:{'Content-Type':'application/json','Cache-Control':'no-cache','X-Content-Type-Options':'nosniff'}});
+ }
  if(!url.pathname.startsWith('/releases/'))return env.ASSETS.fetch(request);
  const m=/^\/releases\/([a-zA-Z0-9:_-]{1,128})\/(live-manga\.json|assets\/[a-f0-9]{64}\.(?:png|jpg|webp|mp4))$/.exec(url.pathname);
  if(!m||!env.MEDIA)return new Response(null,{status:404});
- const catalog=await env.MEDIA.get('catalog.json');if(!catalog)return new Response(null,{status:404});
+ const catalog=await env.MEDIA.get('catalog.json');if(!catalog)return new Response(null,{status:404});if(catalog.size>1024*1024)return new Response(null,{status:502});
  const entries=await catalog.json();if(!Array.isArray(entries.releases)||!entries.releases.includes(m[1]))return new Response(null,{status:404});
  const prefix=`releases/${m[1]}/`,manifestObject=await env.MEDIA.get(prefix+'live-manga.json');if(!manifestObject||manifestObject.size>4*1024*1024)return new Response(null,{status:404});
  let manifest;try{manifest=validate(await manifestObject.json());if(manifest.releaseId!==m[1])throw Error();}catch{return new Response(null,{status:502});}
