@@ -30,7 +30,9 @@ export function Reader({manifest,base}:{manifest:Manifest;base:string}) {
 async function start() {
  const root=createRoot(document.getElementById('root')!);
  try {
-  const release=new URL(location.href).searchParams.get('release');if(release&&!/^[a-zA-Z0-9:_-]{1,128}$/.test(release))throw Error('刊行版の指定が不正です');
+  let release=new URL(location.href).searchParams.get('release');
+  if(!release){const catalog=await fetch('/catalog.json',{signal:AbortSignal.timeout(15000),cache:'no-cache'});if(catalog.ok){const text=await catalog.text();if(text.length>1024)throw Error('公開一覧が不正です');release=JSON.parse(text).current;}else if(catalog.status!==404)throw Error('公開一覧を取得できません');}
+  if(release&&!/^[a-zA-Z0-9:_-]{1,128}$/.test(release))throw Error('刊行版の指定が不正です');
   const base=release?`/releases/${release}/`:'/demo/';
   const response=await fetch(base+'live-manga.json',{signal:AbortSignal.timeout(15000)});if(!response.ok)throw Error('作品を取得できません');
   const data=await response.text();if(data.length>4*1024*1024)throw Error('作品データが大きすぎます');const manifest=validate(JSON.parse(data)) as Manifest;
