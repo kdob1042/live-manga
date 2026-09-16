@@ -1,0 +1,27 @@
+{
+  "name": "live-manga",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "node scripts/fixture.mjs && vite build",
+    "test": "node --test tests/*.test.mjs",
+    "test:ui": "playwright test",
+    "lint": "node scripts/check.mjs",
+    "typecheck": "tsc --noEmit",
+    "contract:bundle": "node scripts/contract-bundle.mjs"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "3.1133.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "typescript": "7.0.2",
+    "vite": "^7.0.0"
+  }
+}
