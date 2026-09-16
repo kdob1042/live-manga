@@ -6,3 +6,5 @@ playwright-report/
 .wrangler/
 
 dist-contract/
+
+public/releases/
