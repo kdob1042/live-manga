@@ -4,9 +4,7 @@
 
 ## Web本体
 
-既存方針に合わせ、Cloudflare WorkersのGit連携を唯一の本番デプロイ経路にする。接続repoはlive-manga、production branchはmain。Build commandは `npm ci && npm run build`、deploy commandは `npx wrangler deploy`。ビルド環境へFFmpeg/Python/Pillow/DejaVuを用意できない場合は、CIのdist artifactを利用する別経路へ明示的に切り替え、Git連携との二重deployを禁止する。
-
-人工fixtureの生成環境依存を避ける本番ビルドは `npm ci && npx vite build`。この場合サンプルを出さず、`/?release=...` で公開作品へ直接誘導する。設定後、main CI成功・対応commit・公開URL・実配信rangeを確認する。dev/PRは人工素材のCIのみ。
+既存方針に合わせ、Cloudflare WorkersのGit連携を唯一の本番デプロイ経路にする。接続repoはlive-manga、production branchはmain。Build commandは `npm ci && npm run build`、deploy commandは `npx wrangler deploy`。ビルドは検証済みの小さな人工fixtureを復元するためNodeだけで実行できる。FFmpeg/Pillowはfixture再生成と実体検証時のみ必要。設定後、main CI成功・対応commit・公開URL・実配信rangeを確認する。dev/PRは人工素材のCIのみ。
 
 R2 bucketは所有者が指定した実名を `wrangler.jsonc` の `r2_buckets` に追加し、bindingを `MEDIA` とする。bucketの公開書込は無効。WorkerはGET/HEADのみ。同一origin `/releases/<releaseId>/...` で配信するのでCORS設定は不要。公開一覧にない刊行版やmanifestにないassetは404。MP4欠損でHTMLへフォールバックしない。
 
@@ -28,6 +26,6 @@ CLIは全実体検証→ファイルと容量のdry-run→If-None-Matchによる
 node scripts/publish.mjs --rollback PREVIOUS_RELEASE_ID --apply
 ```
 
-旧刊行版へのcatalog.current参照を戻す。旧URLは維持し、読書中の版は切り替えない。作品は公開すると読者が取得可能。秘密情報・非公開原稿を公開しない。
+旧刊行版へのcatalog.current参照を戻す。旧URLは維持し、読書中の版は切り替えない。未指定URLはcatalog.currentを開く。各読者は読み始めたreleaseIdへ固定し、閲覧中に版を切り替えない。作品は公開すると読者が取得可能。秘密情報・非公開原稿を公開しない。
 
 HTTP実装の根拠: [R2 Workers API](https://developers.cloudflare.com/r2/api/workers/workers-api-reference/)、[R2 S3条件付き操作](https://developers.cloudflare.com/r2/api/s3/api/)。本番接続試験は別途必要。
