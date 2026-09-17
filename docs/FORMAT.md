@@ -23,3 +23,9 @@ v2 panelは従来のフィールドに`clip`を必須追加する。`clip`はペ
 表示・動画クリップ・クリック可能領域はすべて`clip ∩ artRect`とする。v2ではartRectがframeを覆うcropか、四隅がclip内にあるcontainのいずれかを許可する。動画も同じartRectとclipを使用し、終了時は元の作画レイヤーに戻る。文字・枠overlayを動画の上に維持する。拡大表示も同じ切り抜きを使う。`motion`に別の配置を持たせない。任意fieldや外部URLは引き続き拒否する。
 
 v1にはclipを追加せず、frame内のartRectという従来の規則をそのまま適用する。既存刊行フォルダとカタログの不変性は維持する。
+
+## 制作途中プレビュー（Issue #22）
+
+公開刊行物と分離した live-manga-preview 1.0.0 envelopeを contracts/preview.mjs / preview.schema.json / preview-types.tsで定義する。内側のmanifestは既存v1/v2のページ・画像・動画契約をそのまま利用する。savedAt、転送漫画に必要なscenes（id/tags）、panels（id/sceneIds/art/lettering/motion）のみ追加。原稿全文・制作DB・秘密は含めない。scene-local AND/ORで一致したscene→panel→pageを導出し、ページの元番号・配置を保つ。フィルタで資産や転送版を変更しない。タグなし作品は全体表示。画像のみのpanelはtext=''、画像は必須。
+
+未完成のartは有効なplaceholder画像を制作側が用意する。文字なしnoneと未配置pendingを区別する。表示フィルタはアクセス制限ではない。公開publishへpreview envelopeを渡すと既存validatorが拒否する。

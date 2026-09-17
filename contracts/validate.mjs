@@ -58,7 +58,7 @@ export function validate(manifest) {
     integer(p.width,1,LIMITS.dimension);integer(p.height,1,LIMITS.dimension);array(p.panels,1,LIMITS.panels);
     for(const k of ['art','overlay','fallback']) {const a=asset(p[k],'image/');if(a.width!==p.width||a.height!==p.height) fail('page layer dimensions differ');if(k==='overlay'&&a.mime!=='image/png')fail('overlay must be PNG');}
     for(const panel of p.panels) {
-      obj(panel,['id','frame','artRect','poster','text',...(manifest.schemaVersion===VERSION?['clip']:[])],['motion']);id(panel.id);ids.push(panel.id);text(panel.text);
+      obj(panel,['id','frame','artRect','poster','text',...(manifest.schemaVersion===VERSION?['clip']:[])],['motion']);id(panel.id);ids.push(panel.id);if(panel.text!=='')text(panel.text);
       rect(panel.frame,p.width,p.height);rect(panel.artRect,p.width,p.height,manifest.schemaVersion===VERSION);
       const f=panel.frame,r=panel.artRect;
       if(manifest.schemaVersion===VERSION)quad(panel,p.width,p.height);

@@ -1,11 +1,9 @@
 import { validate } from '../contracts/validate.mjs';
-export function parseRange(value,size) {
- const m=/^bytes=(\d*)-(\d*)$/.exec(value);if(!m||(!m[1]&&!m[2]))return null;
- let start=m[1]?Number(m[1]):Math.max(0,size-Number(m[2])),end=m[1]?(m[2]?Number(m[2]):size-1):size-1;
- if(!Number.isSafeInteger(start)||!Number.isSafeInteger(end)||start>=size||end<start||(!m[1]&&Number(m[2])===0))return null;
- end=Math.min(end,size-1);return {offset:start,length:end-start+1};
-}
+import {parseRange} from './http-range.mjs';
+export {parseRange} from './http-range.mjs';
+import {handlePreview} from './preview-worker.mjs';
 export default {async fetch(request,env) {
+ const preview=await handlePreview(request,env);if(preview)return preview;
  if(!['GET','HEAD'].includes(request.method))return new Response(null,{status:405,headers:{Allow:'GET, HEAD'}});
  const url=new URL(request.url);
  if(url.pathname==='/catalog.json'){

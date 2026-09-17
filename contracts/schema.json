@@ -76,11 +76,11 @@
         },
         "width": {
           "type": "number",
-          "minimum": 1e-07
+          "minimum": 1e-7
         },
         "height": {
           "type": "number",
-          "minimum": 1e-07
+          "minimum": 1e-7
         }
       },
       "required": [
@@ -214,9 +214,9 @@
         },
         "text": {
           "type": "string",
-          "minLength": 1,
+          "minLength": 0,
           "maxLength": 2000,
-          "pattern": "^[^<>\\u0000-\\u0008]+$"
+          "pattern": "^[^<>\\u0000-\\u0008]*$"
         },
         "motion": {
           "type": "object",
@@ -301,11 +301,11 @@
         },
         "width": {
           "type": "number",
-          "minimum": 1e-07
+          "minimum": 1e-7
         },
         "height": {
           "type": "number",
-          "minimum": 1e-07
+          "minimum": 1e-7
         }
       },
       "required": [
@@ -349,9 +349,9 @@
         },
         "text": {
           "type": "string",
-          "minLength": 1,
+          "minLength": 0,
           "maxLength": 2000,
-          "pattern": "^[^<>\\u0000-\\u0008]+$"
+          "pattern": "^[^<>\\u0000-\\u0008]*$"
         },
         "motion": {
           "type": "object",
