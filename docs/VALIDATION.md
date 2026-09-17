@@ -7,3 +7,12 @@
 Node・build・TypeScriptの結果とUI実行結果はPRへ記録。WebKit自動試験と実iPhoneは別受入。
 
 未実施: 実iPhone Safari、実Android Chrome、Mac GUI、有料生成品質、R2本番認証・配信、Cloudflare本番公開。これらをfixture成功から推定しない。#1/#2/#39は残条件がある限りcloseしない。
+
+
+## Issue #10: v2自由レイアウト接続（2026-09-17）
+
+- 正本contracts v2と従来v1の読込、公開許可リスト・形状・画像変換・参照を検証。lint/typecheck/build、単体10件成功。
+- manga-macの実Canvas→Rustエクスポータで人工4/6コマ・斜め枠・cropを出力。PNGとfallbackを照合し、ネイティブ側で頂点・割当改変を拒否。公開先へmanifest/assetのbytesを変更せず渡す。
+- Chromium 12件、WebKit 12件成功（各4件がv2 producer出力、8件が従来v1）。配置寸法、動画と静止画の画素比較、終了後の静止画一致、斜め枠外のヒット拒否、拡大時の同一変換を確認。
+- ローカルのブラウザCDN/OS依存の制限を補うため、Chromiumは外部実行ファイル、WebKitは公式Playwrightビルドとローカル展開したUbuntuライブラリを使用。CIは標準の `playwright install --with-deps chromium webkit` を使用する。
+- CIでは `tests/exporter-lock.json` に固定した制作側をcheckoutし、`scripts/exporter-acceptance.mjs`で同じ受入を必須実行する。fixtureは人工校正用でAI生成実績ではない。Mac実機・実スマホ・本番公開は未実施。

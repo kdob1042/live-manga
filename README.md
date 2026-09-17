@@ -21,3 +21,5 @@ npm run dev
 検証: `npm run lint`、`npm run typecheck`、`npm test`、`npm run build`、`npx playwright install --with-deps chromium webkit`、`npm run test:ui`。
 
 [作品形式](docs/FORMAT.md) · [公開手順](docs/DEPLOY.md) · [検証記録](docs/VALIDATION.md)
+
+制作側とのCI受入は `tests/exporter-lock.json` の固定commitを使用します。依存を導入したmanga-macのcheckoutを指定して `node scripts/exporter-acceptance.mjs /path/to/manga-mac` を実行すると、実書き出し→改変なしのコピー→Chromium/WebKitの読者試験を行います。
