@@ -1,0 +1,41 @@
+name: Preview branch integration
+on:
+  push:
+    branches: [issue/22-work-1]
+    paths: [scripts/preview-integrate.mjs, .github/workflows/preview-integrate.yml]
+permissions:
+  contents: write
+jobs:
+  integrate:
+    if: github.repository == 'kdob1042/live-manga' && github.ref == 'refs/heads/issue/22-work-1'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Integrate existing layout dependency and preview entry points
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git merge --no-edit 227dfd6c4ade74edb7d24859af0e5820b53bf1ed
+          node scripts/preview-integrate.mjs
+          git add -A
+          git commit -m 'feat: wire private previews and display-time scene filters'
+          git push origin HEAD:refs/heads/issue/22-work-1
+          git rev-parse HEAD
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg python3-pil fonts-dejavu-core
+      - run: npm ci
+      - run: npm run lint && npm run typecheck && npm run build && npm test
+      - run: npx playwright install --with-deps chromium webkit
+      - run: npm run test:ui
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: preview-integration-validation
+          path: |
+            test-results/
+            dist/
