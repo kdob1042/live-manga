@@ -11,8 +11,8 @@ Report automated Chromium/WebKit results separately from real iPhone/Android and
 
 ## Issue/PR task state
 
-- New implementation issues receive status:ready; an issue is considered started only when a Draft PR exists.
-- To start a task, a maintainer adds the agent:start label or comments /start. GitHub Actions creates issue/<number>-<short-name> from the latest dev and opens a Draft PR.
-- The linked issue moves to status:in-progress, then status:review when the PR is ready for review, and status:done after merge. A closed, unmerged PR becomes status:blocked.
-- Keep Refs #<number> in the PR body and mark the PR ready only after the required checks and acceptance criteria pass.
-- Creating a branch alone is not a start event; preserve the existing dev-first, PR-based workflow.
+- Issue open/closed and PRs are the source of truth; Project is a derived view. Do not add or manually maintain status:* labels.
+- Before implementation, the agent adds agent:start or comments /start. Actions creates an empty-commit Draft PR from latest dev, or reuses the existing PR. Wait for it and implement on that branch; do not create a duplicate PR.
+- New Issue → Todo; open PR (including Draft) → In Progress; current CI failure, change request, or unfinished Issue without an open replacement PR → Needs attention; closed Issue → Done. Ready for review stays In Progress.
+- Put Refs #<number> on its own line. Only change to Closes #<number> when ALL acceptance criteria are met. For partial work, create a follow-up Issue first and put `Parent: #<number>` on its own line in that Issue. The synchronizer closes the parent after the Refs PR merges and the follow-up exists; without that Issue, the parent remains open and needs attention.
+- Mark the PR ready only after required checks and acceptance criteria pass. Preserve the dev-first, PR-based workflow. Do not use Project Done to close Issues in reverse; see docs/PROJECT_AUTOMATION.md for recovery.
