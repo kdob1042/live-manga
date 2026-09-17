@@ -59,3 +59,15 @@ test('slanted crop clips pointer hits; enlarged playback keeps the same transfor
  expect(vb.width/cb.width).toBeCloseTo(p.artRect.width/p.frame.width,3);
  await page.keyboard.press('Escape');await expect(page.locator('video')).toHaveCount(0);await expect(target).toBeFocused();
 });
+
+test('cropped video stops when its visible frame leaves the viewport',async({page})=>{
+ const surface=page.locator('.page').first(),box=await surface.boundingBox();
+ const manifest=await (await page.request.get(`/releases/${release}/live-manga.json`)).json();
+ const panel=manifest.pages[0].panels[0];
+ const host=page.locator('[id="motion-s:p0"]');
+ await host.locator('..').locator('xpath=following-sibling::div[1]').locator('.panel-control').press('Enter');
+ await expect.poll(()=>page.locator('video').evaluate(v=>v.currentTime)).toBeGreaterThan(0);
+ // The clipped frame is gone, but the larger source rectangle still intersects the viewport.
+ await page.evaluate(y=>window.scrollTo(0,y),box.y+panel.frame.y+panel.frame.height+5);
+ await expect(page.locator('video')).toHaveCount(0);
+});

@@ -28,7 +28,7 @@ export function Reader({manifest,base}:{manifest:Manifest;base:string}) {
  useEffect(()=>{const hide=()=>{if(document.hidden)stop();};document.addEventListener('visibilitychange',hide);return()=>{document.removeEventListener('visibilitychange',hide);stop();};},[]);
  useEffect(()=>{if(!active)return;const observer=new IntersectionObserver(entries=>{if(entries.some(e=>!e.isIntersecting))stop();},{threshold:0});observer.observe(surface.current!);return()=>observer.disconnect();},[active]);
  function start(panel:Panel,host:HTMLDivElement,{expanded=false,resumeAt=0}={}) {
-  const epoch=generation.current,video=document.createElement('video');surface.current=host;
+  const epoch=generation.current,video=document.createElement('video');surface.current=host.parentElement as HTMLDivElement;
   video.playsInline=true;video.muted=true;video.controls=expanded;video.preload='none';if(!expanded)video.setAttribute('aria-hidden','true');else video.setAttribute('aria-label',`${panel.text} 動画`);video.style.opacity='0';video.src=url(panel.motion!.asset);host.append(video);current.current=video;setActive(panel.id);setStatus(expanded?'拡大動画を読み込み中…':'読み込み中…');
   const valid=()=>generation.current===epoch&&current.current===video;
   const fail=()=>{if(valid())stop('動画を読み込めませんでした。コマを押すと再試行できます。');};
