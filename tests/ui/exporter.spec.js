@@ -49,8 +49,10 @@ test('slanted crop clips pointer hits; enlarged playback keeps the same transfor
  await page.mouse.click(box.x+(p.frame.x+5)*scale,box.y+(p.frame.y+5)*scale);
  await expect(page.locator('video')).toHaveCount(0);
  const target=page.locator('[id="motion-s:p0"]').locator('..').locator('xpath=following-sibling::div[1]').locator('.panel-control');
- // Touch/long-press at the frame center, which is inside the convex quad.
- const x=box.x+(p.frame.x+p.frame.width/2)*scale,y=box.y+(p.frame.y+p.frame.height/2)*scale;
+ // Touch/long-press the compact playback button, which is inside the convex quad.
+ const targetBox=await target.boundingBox();
+ if(!targetBox)throw new Error('Expected the clipped panel playback button to be visible');
+ const x=targetBox.x+targetBox.width/2,y=targetBox.y+targetBox.height/2;
  await page.mouse.move(x,y);await page.mouse.down();await page.waitForTimeout(500);await page.mouse.up();
  await expect(page.getByRole('dialog')).toBeVisible();await expect.poll(()=>page.locator('video').evaluate(v=>v.currentTime)).toBeGreaterThan(0);
  const clip=page.locator('.modal-motion.cropped'),cb=await clip.boundingBox(),vb=await page.locator('video').boundingBox();
