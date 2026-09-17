@@ -17,6 +17,27 @@ const hintPosition=(panel:Panel,expand=false)=>{
  const box=expand?panel.frame:panel.artRect,{x,y}=visibleCenter(panel);
  return {position:'absolute' as const,left:`${(x-box.x)/box.width*100}%`,top:`${(y-box.y)/box.height*100}%`,right:'auto',transform:expand?'translate(10%, -50%)':'translate(-110%, -50%)'};
 };
+const panelControlStyle=(panel:Panel)=>{
+ if(!panel.clip)return {};
+ const frame=panel.frame,clip=panel.clip;
+ const candidates:[[number,number],[number,number],[number,number],[number,number]]=[
+  [frame.x+frame.width*.84,frame.y+frame.height*.84],
+  [frame.x+frame.width*.16,frame.y+frame.height*.84],
+  [frame.x+frame.width*.84,frame.y+frame.height*.16],
+  [frame.x+frame.width*.16,frame.y+frame.height*.16]
+ ];
+ const inside=(x:number,y:number)=>{
+  let positive=false,negative=false;
+  for(let i=0;i<clip.length;i++){
+   const [ax,ay]=clip[i],[bx,by]=clip[(i+1)%clip.length];
+   const cross=(bx-ax)*(y-ay)-(by-ay)*(x-ax);
+   positive ||= cross>0;negative ||= cross<0;
+  }
+  return !(positive&&negative);
+ };
+ const center=visibleCenter(panel),[x,y]=candidates.find(([px,py])=>inside(px,py))??[center.x,center.y];
+ return {left:`${(x-frame.x)/frame.width*100}%`,top:`${(y-frame.y)/frame.height*100}%`,right:'auto',bottom:'auto',transform:'translate(-50%, -50%)'};
+};
 const LONG_PRESS_MS=450,MOVE_TOLERANCE=10;
 export function Reader({manifest,base}:{manifest:Manifest;base:string}) {
  const [still,setStill]=useState(()=>matchMedia('(prefers-reduced-motion: reduce)').matches),[active,setActive]=useState<string|null>(null),[status,setStatus]=useState(''),[failed,setFailed]=useState<Record<string,boolean>>({}),[modalPanel,setModalPanel]=useState<Panel|null>(null);
@@ -46,9 +67,9 @@ export function Reader({manifest,base}:{manifest:Manifest;base:string}) {
  function beginLongPress(event:React.PointerEvent<HTMLButtonElement>,panel:Panel){if(event.button!==0)return;cancelLongPress();suppressClick.current=false;const target=event.currentTarget;longPress.current={x:event.clientX,y:event.clientY,timer:setTimeout(()=>{longPress.current=null;suppressClick.current=true;expand(panel,target);},LONG_PRESS_MS)};}
  function moveLongPress(event:React.PointerEvent<HTMLButtonElement>){const press=longPress.current;if(press&&Math.hypot(event.clientX-press.x,event.clientY-press.y)>MOVE_TOLERANCE)cancelLongPress();}
  function activate(panel:Panel){if(suppressClick.current){suppressClick.current=false;return;}play(panel);}
- return <><header><a href="/" aria-label="Live Manga">LIVE <b>MANGA</b></a><label><input type="checkbox" checked={still} onChange={e=>{stop();setStill(e.target.checked);}}/>静止漫画として読む</label></header><main><div className="intro"><span>LIVE MANGA / 01</span><h1>{manifest.title}</h1><p>自分のペースで読む。触れたコマだけ、動き出す。</p></div><div className="status" role="status" aria-live="polite">{status||'▶ のあるコマに触れて再生'}</div>{manifest.pages.map((page,index)=><section key={page.id} aria-label={`${index+1}ページ`}><div className="page" style={{aspectRatio:`${page.width}/${page.height}`}}>
+ return <><header><a href="/" aria-label="Live Manga">LIVE <b>MANGA</b></a><label><input type="checkbox" checked={still} onChange={e=>{stop();setStill(e.target.checked);}}/>静止漫画として読む</label></header><main><div className="intro"><span>LIVE MANGA / 01</span><h1>{manifest.title}</h1><p>自分のペースで読む。触れたコマだけ、動き出す。</p></div><div className="status" role="status" aria-live="polite">{status||'▶ のあるコマをタップして再生。長押しで拡大'}</div>{manifest.pages.map((page,index)=><section key={page.id} aria-label={`${index+1}ページ`}><div className="page" style={{aspectRatio:`${page.width}/${page.height}`}}>
  <img className="layer" src={url(failed[page.id]?page.fallback:page.art)} width={page.width} height={page.height} alt={`${index+1}ページの漫画。本文はページ下の「テキストで読む」にあります。`} onError={()=>{stop();setFailed(f=>({...f,[page.id]:true}));}}/>
- {!failed[page.id]&&page.panels.filter(p=>p.motion).map(panel=><React.Fragment key={panel.id}><div className="motion" style={{...placement(surfaceRect(panel),page),...clipStyle(panel)}}><div className="motion-media" id={`motion-${panel.id}`} style={panel.clip?relative(panel.artRect,panel.frame):undefined}/></div>{!still&&<div className="panel-actions" style={{...placement(surfaceRect(panel),page),...clipStyle(panel)}}><button className={`panel-control ${active===panel.id?'playing':''}`} style={panel.clip?relative(panel.artRect,panel.frame):undefined} aria-label={`${panel.text} ${active===panel.id?'停止':'再生'}。長押しで拡大`} onPointerDown={e=>beginLongPress(e,panel)} onPointerMove={moveLongPress} onPointerUp={cancelLongPress} onPointerCancel={cancelLongPress} onContextMenu={e=>e.preventDefault()} onClick={()=>activate(panel)}><span style={hintPosition(panel)}>{active===panel.id?'Ⅱ':'▶'}</span></button><button className="expand-control" style={hintPosition(panel,true)} aria-label={`${panel.text}の動画を大きく表示`} onClick={e=>expand(panel,e.currentTarget)}><span aria-hidden="true">⛶</span></button></div>}</React.Fragment>)}
+ {!failed[page.id]&&page.panels.filter(p=>p.motion).map(panel=><React.Fragment key={panel.id}><div className="motion" style={{...placement(surfaceRect(panel),page),...clipStyle(panel)}}><div className="motion-media" id={`motion-${panel.id}`} style={panel.clip?relative(panel.artRect,panel.frame):undefined}/></div>{!still&&<div className="panel-actions" style={{...placement(surfaceRect(panel),page),...clipStyle(panel)}}><button className={`panel-control ${active===panel.id?'playing':''}`} style={panelControlStyle(panel)} aria-label={`${panel.text} ${active===panel.id?'停止':'再生'}。長押しで拡大`} onPointerDown={e=>beginLongPress(e,panel)} onPointerMove={moveLongPress} onPointerUp={cancelLongPress} onPointerCancel={cancelLongPress} onPointerLeave={cancelLongPress} onContextMenu={e=>e.preventDefault()} onClick={()=>activate(panel)}><span>{active===panel.id?'Ⅱ':'▶'}</span></button><button className="expand-control" style={hintPosition(panel,true)} aria-label={`${panel.text}の動画を大きく表示`} onClick={e=>expand(panel,e.currentTarget)}><span aria-hidden="true">⛶</span></button></div>}</React.Fragment>)}
  {!failed[page.id]&&<img className="layer overlay" src={url(page.overlay)} width={page.width} height={page.height} alt="" onError={()=>{stop();setFailed(f=>({...f,[page.id]:true}));}}/>}
  </div><p className="folio">{String(index+1).padStart(2,'0')}</p><details><summary>テキストで読む</summary>{page.panels.map(panel=><p key={panel.id}>{panel.text}</p>)}</details></section>)}</main><footer>LIVE MANGA · {manifest.releaseId}</footer>
  <dialog ref={dialog} className="video-dialog" aria-label={modalPanel?`${modalPanel.text}の拡大動画`:'拡大動画'} onCancel={e=>{e.preventDefault();stop();}} onClick={e=>{if(e.target===e.currentTarget)stop();}}><div className="video-dialog-shell"><div className="video-dialog-head"><p>{modalPanel?.text}</p><button className="dialog-close" aria-label="拡大動画を閉じる" onClick={()=>stop()}>×</button></div><div className={`modal-motion ${modalPanel?.clip?'cropped':''}`} style={modalPanel?.clip?{...clipStyle(modalPanel),aspectRatio:`${modalPanel.frame.width}/${modalPanel.frame.height}`,width:`min(100%, calc((94dvh - 58px) * ${modalPanel.frame.width/modalPanel.frame.height}))`}:undefined}><div ref={modalHost} className={modalPanel?.clip?'motion-media':'modal-media'} style={modalPanel?.clip?relative(modalPanel.artRect,modalPanel.frame):undefined}/></div></div></dialog></>;
