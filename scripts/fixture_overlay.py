@@ -12,10 +12,10 @@ ART_OUT = Path(sys.argv[4])
 W, H = 800, 1120
 FRAMES = [
     (26, 26, 470, 470),
-    (520, 26, 254, 330),
-    (26, 515, 240, 240),
-    (282, 515, 492, 240),
-    (26, 785, 748, 300),
+    (496, 26, 278, 470),
+    (26, 496, 240, 240),
+    (266, 496, 508, 240),
+    (26, 736, 748, 300),
 ]
 
 
@@ -67,9 +67,6 @@ def panel_border(draw, frame):
     draw.rectangle((x, y, x + w, y + h), outline=(17, 20, 22, 255), width=7)
 
 
-# The artwork is original geometric line art. It is deliberately separate from
-# the transparent lettering/frame overlay so the motion panel can replace only
-# its artRect while keeping the composition still.
 art = Image.open(BASE_PATH).convert("RGB")
 base = ImageDraw.Draw(art, "RGB")
 fills = ["#fffdf8", "#e3e8e9", "#fffdf8", "#e8e7e1", "#fffdf8"]
@@ -88,52 +85,57 @@ stroke(base, [(175, 350), (115, 470)], 8)
 stroke(base, [(300, 350), (395, 470)], 8)
 stroke(base, [(70, 410), (180, 385), (310, 400), (430, 375)], 3, "#566268")
 
-# Panel 2: a simple moving object/hand motif.
+# Panel 2: a tall moving object/hand motif that fills the taller frame.
+px, py, _, _ = FRAMES[1]
 tone(base, FRAMES[1], 16, (75, 84, 88))
-base.ellipse((585, 90, 720, 225), outline="#172126", width=5)
-stroke(base, [(548, 260), (620, 185), (690, 255)], 7)
-stroke(base, [(565, 280), (650, 210), (735, 270)], 4, "#566268")
-for off in (0, 22, 44):
-    stroke(base, [(545 + off, 295), (575 + off, 315)], 3, "#566268")
+base.ellipse((px + 72, py + 72, px + 210, py + 210), outline="#172126", width=5)
+stroke(base, [(px + 36, py + 272), (px + 102, py + 190), (px + 178, py + 268)], 7)
+stroke(base, [(px + 52, py + 300), (px + 142, py + 220), (px + 238, py + 288)], 4, "#566268")
+for off in (0, 24, 48):
+    stroke(base, [(px + 34 + off, py + 326), (px + 68 + off, py + 348)], 3, "#566268")
+stroke(base, [(px + 35, py + 392), (px + 238, py + 392)], 3, "#566268")
 
 # Panel 3: close-up eye/face.
-base.rectangle((35, 525, 255, 745), fill="#dfe6e8")
+px, py, _, _ = FRAMES[2]
+base.rectangle((px + 9, py + 10, px + 229, py + 230), fill="#dfe6e8")
 tone(base, FRAMES[2], 14, (68, 76, 80))
-base.arc((65, 585, 225, 680), 190, 350, fill="#172126", width=6)
-base.ellipse((130, 620, 155, 645), fill="#172126")
-stroke(base, [(80, 590), (120, 565), (185, 570)], 5)
-stroke(base, [(80, 685), (210, 700)], 4, "#566268")
+base.arc((px + 39, py + 70, px + 199, py + 165), 190, 350, fill="#172126", width=6)
+base.ellipse((px + 104, py + 125, px + 129, py + 150), fill="#172126")
+stroke(base, [(px + 54, py + 65), (px + 94, py + 40), (px + 159, py + 45)], 5)
+stroke(base, [(px + 54, py + 190), (px + 184, py + 205)], 4, "#566268")
 
 # Panel 4: two abstract silhouettes and motion lines.
+px, py, _, _ = FRAMES[3]
 tone(base, FRAMES[3], 18, (68, 76, 80))
-base.ellipse((335, 570, 405, 640), outline="#172126", width=5)
-base.ellipse((560, 565, 635, 640), outline="#172126", width=5)
-stroke(base, [(370, 640), (370, 735)], 8)
-stroke(base, [(595, 640), (600, 735)], 8)
-stroke(base, [(410, 655), (555, 655)], 4)
-for yy in (545, 555, 565):
-    stroke(base, [(430, yy), (540, yy)], 2, "#566268")
+base.ellipse((px + 53, py + 55, px + 123, py + 125), outline="#172126", width=5)
+base.ellipse((px + 278, py + 50, px + 353, py + 125), outline="#172126", width=5)
+stroke(base, [(px + 88, py + 125), (px + 88, py + 220)], 8)
+stroke(base, [(px + 329, py + 125), (px + 334, py + 220)], 8)
+stroke(base, [(px + 128, py + 140), (px + 273, py + 140)], 4)
+for yy in (30, 40, 50):
+    stroke(base, [(px + 148, py + yy), (px + 258, py + yy)], 2, "#566268")
 
 # Panel 5: wide establishing shot.
+px, py, _, _ = FRAMES[4]
 tone(base, FRAMES[4], 20, (68, 76, 80))
-stroke(base, [(35, 1010), (180, 950), (330, 1005), (480, 930), (760, 990)], 6)
-stroke(base, [(55, 850), (180, 820), (300, 845), (430, 810), (750, 850)], 4, "#566268")
-base.ellipse((380, 875, 430, 925), outline="#172126", width=4)
-stroke(base, [(405, 925), (405, 1045)], 6)
-stroke(base, [(405, 960), (360, 1010)], 5)
-stroke(base, [(405, 960), (455, 1000)], 5)
+stroke(base, [(px + 9, py + 225), (px + 154, py + 165), (px + 304, py + 220), (px + 454, py + 145), (px + 734, py + 205)], 6)
+stroke(base, [(px + 29, py + 65), (px + 154, py + 35), (px + 274, py + 60), (px + 404, py + 25), (px + 724, py + 65)], 4, "#566268")
+base.ellipse((px + 354, py + 90, px + 404, py + 140), outline="#172126", width=4)
+stroke(base, [(px + 379, py + 140), (px + 379, py + 260)], 6)
+stroke(base, [(px + 379, py + 175), (px + 334, py + 225)], 5)
+stroke(base, [(px + 379, py + 175), (px + 429, py + 215)], 5)
 
 overlay = Image.new("RGBA", (W, H), (0, 0, 0, 0))
 over = ImageDraw.Draw(overlay, "RGBA")
 for frame in FRAMES:
     panel_border(over, frame)
 
-# Dialogue and narration are deliberately in different in-panel positions.
+# Dialogue and narration remain in distinct, in-panel positions.
 bubble(over, (285, 55, 180, 95), (285, 190), "WAIT...", BOLD_FONT)
-bubble(over, (535, 48, 190, 78), (620, 160), "...", BOLD_FONT)
-narration(over, (48, 548, 150, 54), "A quiet turn.")
-narration(over, (410, 675, 285, 56), "THE MOMENT PAUSES.")
-narration(over, (70, 825, 295, 56), "The room held its breath.")
+bubble(over, (526, 48, 190, 78), (610, 160), "...", BOLD_FONT)
+narration(over, (48, 529, 150, 54), "A quiet turn.")
+narration(over, (394, 656, 285, 56), "THE MOMENT PAUSES.")
+narration(over, (70, 776, 295, 56), "The room held its breath.")
 center_text(over, (600, 235, 135, 40), "· · ·", BOLD_FONT)
 
 art.save(ART_OUT)
@@ -141,4 +143,3 @@ overlay.save(OVERLAY_OUT)
 fallback = art.convert("RGBA")
 fallback.alpha_composite(overlay)
 fallback.convert("RGB").save(FALLBACK_OUT)
-
