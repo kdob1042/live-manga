@@ -22,5 +22,5 @@ test('v2 accepts a panel with image only and no motion',()=>{
  validate(m);
 });
 test('v2 supports mixed page counts and rejects unsupported versions',()=>{
- const m=v2(),second=structuredClone(m.pages[0]);second.id='second';second.panels=[...second.panels,structuredClone(second.panels[0]),structuredClone(second.panels[1])];second.panels.forEach((p,i)=>p.id=`second-${i}`);m.pages.push(second);validate(m);assert.deepEqual(m.pages.map(p=>p.panels.length),[4,6]);m.schemaVersion='3.0.0';assert.throws(()=>validate(m));
+ const m=v2(),second=structuredClone(m.pages[0]);second.id='second';second.panels=[...second.panels,structuredClone(second.panels[0]),structuredClone(second.panels[1])];second.panels.forEach((p,i)=>p.id=`second-${i}`);m.pages.push(second);validate(m);assert.deepEqual(m.pages.map(p=>p.panels.length),[5,7]);m.schemaVersion='3.0.0';assert.throws(()=>validate(m));
 });
