@@ -20,17 +20,17 @@ const art=await addPNG(artFile,800,1120),overlay=await addPNG(overlayFile,800,11
 const poster1=await make('poster-1','color=c=0xE3E8E9:s=470x470',470,470);
 const poster2=await make('poster-2','color=c=0xE3E8E9:s=254x254',254,254);
 const poster3=await make('poster-3','color=c=0xE3E8E9:s=240x240',240,240);
-const poster4=await make('poster-4','color=c=0xE3E8E9:s=492x240',492,240);
+const poster4=await make('poster-4','color=c=0xE8E7E1:s=508x240',508,240);
 const poster5=await make('poster-5','color=c=0xE3E8E9:s=748x300',748,300);
 const video=await make('motion',"color=c=0xE3E8E9:s=254x254:r=24[bg];color=c=0x27343C:s=54x54:r=24[box];[bg][box]overlay=x='100+45*sin(t*2)':y='92+35*cos(t*1.6)':shortest=1",254,254,true);
 const panels=[
  {id:'panel-1',frame:{x:26,y:26,width:470,height:470},artRect:{x:26,y:26,width:470,height:470},poster:poster1,text:'静かな午後。'},
- {id:'panel-2',frame:{x:520,y:26,width:254,height:330},artRect:{x:520,y:26,width:254,height:254},poster:poster2,text:'ひとつのコマに、触れてみる。',motion:{asset:video,end:'poster'}},
- {id:'panel-3',frame:{x:26,y:515,width:240,height:240},artRect:{x:26,y:515,width:240,height:240},poster:poster3,text:'視線が、こちらを向く。'},
- {id:'panel-4',frame:{x:282,y:515,width:492,height:240},artRect:{x:282,y:515,width:492,height:240},poster:poster4,text:'言葉になる前の間。'},
- {id:'panel-5',frame:{x:26,y:785,width:748,height:300},artRect:{x:26,y:785,width:748,height:300},poster:poster5,text:'続きは、自分のペースで.'}
+ {id:'panel-2',frame:{x:496,y:26,width:278,height:470},artRect:{x:496,y:26,width:254,height:254},poster:poster2,text:'ひとつのコマに、触れてみる。',motion:{asset:video,end:'poster'}},
+ {id:'panel-3',frame:{x:26,y:496,width:240,height:240},artRect:{x:26,y:496,width:240,height:240},poster:poster3,text:'視線が、こちらを向く。'},
+ {id:'panel-4',frame:{x:266,y:496,width:508,height:240},artRect:{x:266,y:496,width:508,height:240},poster:poster4,text:'言葉になる前の間。'},
+ {id:'panel-5',frame:{x:26,y:736,width:748,height:300},artRect:{x:26,y:736,width:748,height:300},poster:poster5,text:'続きは、自分のペースで.'}
 ];
 await writeFile(`${root}/live-manga.json`,JSON.stringify({format:'live-manga',schemaVersion:'1.0.0',releaseId:'demo-v1',workId:'demo',episodeId:'one',title:'触れると、動き出す。',language:'ja',pages:[{id:'page-1',width:800,height:1120,art,overlay,fallback,panels}],assets},null,2));
-await verifyPackage(root);console.log('Verified variable manga-like 5-panel / 5-second fixture');
+await verifyPackage(root);console.log('Verified gapless variable manga-like 5-panel / 5-second fixture');
 
 const manifest=JSON.parse(await readFile(root+'/live-manga.json','utf8'));const files={};for(const a of manifest.assets)files[a.path]=(await readFile(root+'/'+a.path)).toString('base64');await writeFile('contracts/fixture-assets.json',JSON.stringify({manifest,files})+'\n');
