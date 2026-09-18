@@ -1,4 +1,17 @@
 import {test,expect} from '@playwright/test';
+test('shared reader shell puts work navigation in a collapsible sidebar',async({page})=>{
+ await page.goto('/');
+ await expect(page.getByRole('tab',{name:'作品'})).toHaveAttribute('aria-selected','true');
+ await page.getByRole('tab',{name:'目次'}).click();
+ await expect(page.locator('.toc-list a')).toHaveCount(1);
+ await page.locator('.toc-list a').first().click();
+ await page.locator('.sidebar-toggle').click();
+ await expect(page.locator('.reader-shell')).not.toHaveClass(/sidebar-open/);
+ await expect(page.locator('.sidebar-toggle')).toHaveAttribute('aria-expanded','false');
+ await page.locator('.sidebar-toggle').click();
+ await expect(page.locator('.reader-shell')).toHaveClass(/sidebar-open/);
+});
+
 test('only panels with motion expose a compact playback button',async({page})=>{
  await page.goto('/');
  const control=page.locator('.panel-control');
