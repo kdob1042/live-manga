@@ -9,7 +9,7 @@ npm run build
 npm run dev
 ```
 
-通常ビルドはNode 22+のみ。`npm run build` は検証済みの人工4コマ・5秒無音MP4を復元する。`npm run fixture:generate`で再生成する場合だけ、FFmpeg/ffprobe、Python3/Pillow、DejaVu Sansが必要。実作品や有料生成は含まない。
+通常ビルドはNode 22+のみ。`npm run build` は検証済みの人工5コマ可変レイアウト・5秒無音MP4を復元する。`npm run fixture:generate`で再生成する場合だけ、FFmpeg/ffprobe、Python3/Pillow、DejaVu Sansが必要。実作品や有料生成は含まない。
 
 - 動画を持つコマだけに欄外寄りの小さな再生可能マークを表示し、動画はコマを触れた時だけ取得。スマホは短押しでコマ内再生、長押しで大型表示。PCはクリックでコマ内再生、再生中の再クリックで大型表示。動画のないコマには操作表示を出さない。同時再生1コマ、終了／画面外／バックグラウンド時は静止画へ戻る。
 - v2の自由四角形・可変コマ数・cropは静止画と動画で同じ配置を使用。
