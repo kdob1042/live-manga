@@ -30,7 +30,7 @@ const panels=[
  {id:'panel-4',frame:{x:282,y:515,width:492,height:240},artRect:{x:282,y:515,width:492,height:240},poster:poster4,text:'言葉になる前の間。'},
  {id:'panel-5',frame:{x:26,y:785,width:748,height:300},artRect:{x:26,y:785,width:748,height:300},poster:poster5,text:'続きは、自分のペースで.'}
 ];
-await writeFile(`${root}/live-manga.json`,JSON.stringify({format:'live-manga',schemaVersion:'1.0.0',releaseId:'demo-v2',workId:'demo',episodeId:'one',title:'触れると、動き出す。',language:'ja',pages:[{id:'page-1',width:800,height:1120,art,overlay,fallback,panels}],assets},null,2));
+await writeFile(`${root}/live-manga.json`,JSON.stringify({format:'live-manga',schemaVersion:'1.0.0',releaseId:'demo-v1',workId:'demo',episodeId:'one',title:'触れると、動き出す。',language:'ja',pages:[{id:'page-1',width:800,height:1120,art,overlay,fallback,panels}],assets},null,2));
 await verifyPackage(root);console.log('Verified variable manga-like 5-panel / 5-second fixture');
 
 const manifest=JSON.parse(await readFile(root+'/live-manga.json','utf8'));const files={};for(const a of manifest.assets)files[a.path]=(await readFile(root+'/'+a.path)).toString('base64');await writeFile('contracts/fixture-assets.json',JSON.stringify({manifest,files})+'\n');
