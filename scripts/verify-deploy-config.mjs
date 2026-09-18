@@ -12,8 +12,8 @@ const json = source
 const config = JSON.parse(json);
 
 const errors = [];
-if (config.workers_dev !== false) {
-  errors.push('workers_dev must remain false; public access is controlled by Cloudflare Access');
+if (config.workers_dev !== true) {
+  errors.push('workers_dev must remain true; Cloudflare Access protects the workers.dev publication URL');
 }
 if ('routes' in config) {
   errors.push('routes must not be declared here; Worker routing is dashboard-managed');
@@ -38,4 +38,4 @@ if (errors.length) {
   process.exit(1);
 }
 
-console.log('Deployment safety guard passed: Cloudflare Access ownership and private MEDIA binding are preserved.');
+console.log('Deployment safety guard passed: Access-protected workers.dev and private MEDIA binding are preserved.');
