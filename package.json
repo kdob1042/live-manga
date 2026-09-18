@@ -10,6 +10,7 @@
     "test:ui": "playwright test",
     "lint": "node scripts/check.mjs",
     "typecheck": "tsc --noEmit",
+    "verify:deploy-config": "node scripts/verify-deploy-config.mjs",
     "contract:bundle": "node scripts/contract-bundle.mjs",
     "fixture:generate": "node scripts/fixture.mjs"
   },
