@@ -4,7 +4,21 @@
 
 ## Web本体
 
-既存方針に合わせ、Cloudflare WorkersのGit連携を唯一の本番デプロイ経路にする。接続repoはlive-manga、production branchはmain。Build commandは `npm ci && npm run build`、deploy commandは `npx wrangler deploy`。ビルドは検証済みの小さな人工fixtureを復元するためNodeだけで実行できる。FFmpeg/Pillowはfixture再生成と実体検証時のみ必要。設定後、main CI成功・対応commit・公開URL・実配信rangeを確認する。dev/PRは人工素材のCIのみ。
+既存方針に合わせ、Cloudflare WorkersのGit連携を唯一の本番デプロイ経路にする。接続repoはlive-manga、production branchはmain。Build commandは `npm ci && npm run build`、production deploy commandは `npx wrangler deploy`。ビルドは検証済みの小さな人工fixtureを復元するためNodeだけで実行できる。FFmpeg/Pillowはfixture再生成と実体検証時のみ必要。設定後、main CI成功・対応commit・公開URL・実配信rangeを確認する。
+
+### devブランチのPreview
+
+`dev`を確認用Previewの基準ブランチにする。本番の`main`やAccessで保護された本番URLをPreview設定から変更しない。
+
+Cloudflare Dashboardの対象Workerで、`Settings > Build > Branch control`を次のように設定する。
+
+- Git branch（production branch）: `main`
+- Builds for non-production branches: 有効
+- Non-production branch deploy command: `npx wrangler versions upload`
+
+これにより、`dev`へpushするたびにCloudflareがPreview versionを作成する。Cloudflareのこの設定は全非本番ブランチが対象なので、作業ブランチにも一時Previewが生成されるが、継続的に確認する基準URLは`dev`の最新ビルドとする。`main`へのpushだけが本番`npx wrangler deploy`を実行する。
+
+このプロジェクトのPreviewも限定公開で運用するため、Access Applicationで本番の`workers.dev` URLだけでなくPreview URLsも保護対象に含める。Accessのポリシーを作成しただけでは対象Applicationに適用されないため、対象WorkerのPreview URLへの関連付けをDashboardで確認する。Previewに本番R2の書込権限や秘密を追加しない。実データを使う場合は、本番と同じMEDIA bindingを不用意にPreviewへ公開しない運用確認を先に行う。
 
 ## 公開経路とCloudflare Accessの所有者
 
