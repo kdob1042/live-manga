@@ -8,17 +8,16 @@
 
 ## 公開経路とCloudflare Accessの所有者
 
-このWorkerは、Cloudflare Accessで限定公開する前提で運用する。アクセス制御をリポジトリの変更で開放・移行できないよう、次の境界を固定する。
+このWorkerは、**Accessで保護した `workers.dev` URL** を公開経路として使う前提で運用する。Cloudflare公式仕様では、`workers_dev: false` を含めて再デプロイすると `workers.dev` ルートが無効になるため、このリポジトリでは `workers_dev: true` を固定する。
 
-- `wrangler.jsonc` は `workers_dev: false` を維持する。公開用の `workers.dev` エンドポイントを作らない。
-- `wrangler.jsonc` に `routes` または `route` を追加しない。Workerのホスト名・ルート・Access Application・Access PolicyはCloudflare Dashboard側の所有物とする。
+- `workers_dev: true` を維持する。これでURLが存在し、Cloudflare Access Applicationが認証を要求する。
+- `workers_dev: false` に変更しない。次回デプロイで公開URLが消える。
+- `wrangler.jsonc` に `routes` または `route` を追加しない。Workersの公開URLはworkers.dev、認証・許可はCloudflare Dashboard側のAccess Application/Policyの所有物とする。
 - このリポジトリにはAccessのポリシー、API token、カスタムドメインを保存しない。
-- Cloudflare Dashboardで既存のWorkerルートにAccess Applicationを関連付け、Allowポリシーを設定する。ポリシーを作成しただけではアプリケーション保護は成立しない。
+- Dashboardでは、対象Workerの `workers.dev` URLにAccess Applicationを関連付け、Allowポリシーを設定する。ポリシーを作成しただけではアプリケーション保護は成立しない。
 - CIの `npm run verify:deploy-config` が、`workers_dev`、ルート宣言、非公開MEDIA bindingの変更を検査する。アクセス経路を変更するときは、このリポジトリの通常開発PRとは別の運用変更として扱う。
 
 R2の公開Development URLとCustom Domainは無効のままにする。作品ファイルはWorkerの同一origin経由で配信し、R2を直接公開しない。
-
-R2 bucketは所有者が指定した実名を `wrangler.jsonc` の `r2_buckets` に追加し、bindingを `MEDIA` とする。bucketの公開書込は無効。WorkerはGET/HEADのみ。同一origin `/releases/<releaseId>/...` で配信するのでCORS設定は不要。公開一覧にない刊行版やmanifestにないassetは404。MP4欠損でHTMLへフォールバックしない。
 
 ## 完成作品の刊行
 
