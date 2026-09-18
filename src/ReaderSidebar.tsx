@@ -39,6 +39,7 @@ export default function ReaderSidebar({
   const tocPages = pages
     .map((page, index) => ({page, index}))
     .filter(({page}) => visiblePageIds.has(page.id));
+  const textPages = tocPages.filter(({page}) => page.panels.some(panel => panel.text));
   const currentHref = typeof window === 'undefined' ? '#' : window.location.href;
   const workHref = currentHref.includes('?preview=') ? currentHref : `/?release=${encodeURIComponent(manifest.releaseId)}`;
 
@@ -80,6 +81,20 @@ export default function ReaderSidebar({
           {!tocPages.length && <p className="sidebar-empty">表示対象のページがありません。</p>}
         </section>
 
+        <section className="sidebar-text-section" aria-labelledby="reader-text-heading">
+          <details className="sidebar-text-reader">
+            <summary id="reader-text-heading">テキストで読む</summary>
+            <div className="sidebar-text-list">
+              {textPages.map(({page, index}) => <article key={page.id} className="sidebar-text-page">
+                <h3 className="sidebar-text-page-title"><span>{pageLabel(page, index)}</span><small>{page.panels.filter(panel => panel.text).length}件</small></h3>
+                <div className="sidebar-text-body">
+                  {page.panels.map(panel => panel.text ? <p key={panel.id}>{panel.text}</p> : null)}
+                </div>
+              </article>)}
+            </div>
+            {!textPages.length && <p className="sidebar-empty">本文はありません。</p>}
+          </details>
+        </section>
         {preview && <section className="sidebar-tags-section" aria-labelledby="reader-tags-heading">
           <p id="reader-tags-heading" className="sidebar-section-label">タグで絞り込む</p>
           <PreviewControls preview={preview} selected={selectedTags} mode={tagMode} count={visiblePageIds.size} onChange={onTagsChange}/>

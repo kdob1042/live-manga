@@ -4,19 +4,31 @@ const motionHit=page=>page.locator('.panel-hit-area');
 
 test('shared reader shell puts work navigation in a collapsible sidebar',async({page})=>{
  await page.goto('/');
+ await expect(page.locator('.reader-shell')).not.toHaveClass(/sidebar-open/);
  await expect(page.locator('.reader-tabs')).toHaveCount(0);
  await expect(page.locator('.sidebar-close')).toHaveCount(0);
- await expect(page.getByRole('button',{name:'メニューを閉じる'})).toHaveCount(1);
+ await expect(page.getByRole('button',{name:'読書メニューを閉じる'})).toHaveCount(0);
+ await expect(page.locator('.sidebar-toggle')).toHaveText('‹');
+ await expect(page.locator('.page-text')).toHaveCount(0);
+ await expect(page.locator('.sidebar-text-reader')).toHaveCount(1);
+ await page.locator('.sidebar-toggle').click();
+ await expect(page.locator('.reader-shell')).toHaveClass(/sidebar-open/);
+ await expect(page.getByRole('button',{name:'読書メニューを閉じる'})).toHaveCount(1);
+ await expect(page.locator('.sidebar-toggle')).toHaveText('›');
  await expect(page.locator('.work-list .work-option')).toHaveCount(1);
  await expect(page.locator('.toc-list a')).toHaveCount(1);
- await expect(page.locator('.sidebar-toggle')).toHaveText('×');
+ await expect(page.locator('.sidebar-text-reader')).toBeVisible();
+ await page.locator('.sidebar-text-reader > summary').click();
+ await expect(page.getByText('静かな午後。',{exact:true})).toBeVisible();
  await page.locator('.toc-list a').first().click();
  await expect(page.locator('.reader-shell')).not.toHaveClass(/sidebar-open/);
  await expect(page.locator('.sidebar-toggle')).toHaveAttribute('aria-expanded','false');
- await expect(page.locator('.sidebar-toggle')).toHaveText('☰');
+ await expect(page.locator('.sidebar-toggle')).toHaveText('‹');
  await page.locator('.sidebar-toggle').click();
  await expect(page.locator('.reader-shell')).toHaveClass(/sidebar-open/);
- await expect(page.locator('.sidebar-toggle')).toHaveText('×');
+ await expect(page.locator('.sidebar-toggle')).toHaveText('›');
+ await page.locator('.sidebar-toggle').click();
+ await expect(page.locator('.reader-shell')).not.toHaveClass(/sidebar-open/);
 });
 
 test('motion panels expose only a subtle marker and the full panel is clickable',async({page})=>{
@@ -35,7 +47,7 @@ test('motion panels expose only a subtle marker and the full panel is clickable'
 test('short tap loads one video; natural end returns to poster without layout change',async({page})=>{
  const videos=[];page.on('request',r=>{if(r.url().endsWith('.mp4'))videos.push(r.url());});
  await page.goto('/');
- await expect(page.getByRole('heading',{level:1})).toBeVisible();
+ await expect(page.locator('.page').first()).toBeVisible();
  expect(videos).toHaveLength(0);
  const rect=await page.locator('.page').boundingBox();
  await motionHit(page).first().click();
@@ -44,7 +56,8 @@ test('short tap loads one video; natural end returns to poster without layout ch
  await page.screenshot({path:'test-results/reader-playing.png',fullPage:true});
  await expect(page.locator('video')).toHaveCount(0,{timeout:10000});
  expect(await page.locator('.page').boundingBox()).toEqual(rect);
- await page.getByText('テキストで読む',{exact:true}).click();
+ await page.locator('.sidebar-toggle').click();
+ await page.locator('.sidebar-text-reader > summary').click();
  await expect(page.getByText('静かな午後。',{exact:true})).toBeVisible();
 });
 
@@ -62,7 +75,7 @@ test('outside panel taps stop the active video while the marker stays in the gut
  expect(Math.abs(markerCenter-motionCenter)).toBeLessThan(2);
  expect(markerBox.y).toBeGreaterThan(motionBox.y+motionBox.height-8);
  expect(markerBox.y).toBeLessThan(motionBox.y+motionBox.height+8);
- await page.getByText('テキストで読む',{exact:true}).click();
+ await page.locator('.sidebar-toggle').click();
  await expect(page.locator('video')).toHaveCount(0);
 });
 
