@@ -12,11 +12,6 @@ const placement=(r:Rect,p:Page)=>({left:`${r.x/p.width*100}%`,top:`${r.y/p.heigh
 const relative=(r:Rect,box:Rect)=>({left:`${(r.x-box.x)/box.width*100}%`,top:`${(r.y-box.y)/box.height*100}%`,width:`${r.width/box.width*100}%`,height:`${r.height/box.height*100}%`});
 const clipStyle=(panel:Panel,box=panel.frame)=>panel.clip?{clipPath:`polygon(${panel.clip.map(([x,y])=>`${(x-box.x)/box.width*100}% ${(y-box.y)/box.height*100}%`).join(',')})`}:{};
 const surfaceRect=(panel:Panel)=>panel.clip?panel.frame:panel.artRect;
-const visibleCenter=(panel:Panel)=>{
- const f=panel.frame,r=panel.artRect;
- if(panel.clip&&r.width>=f.width&&r.height>=f.height)return {x:panel.clip.reduce((n,p)=>n+p[0],0)/4,y:panel.clip.reduce((n,p)=>n+p[1],0)/4};
- return {x:r.x+r.width/2,y:r.y+r.height/2};
-};
 const actionRect=(panel:Panel)=>panel.clip?panel.frame:panel.artRect;
 const hitAreaStyle=(panel:Panel)=>panel.clip?{...relative(panel.artRect,panel.frame),right:'auto',bottom:'auto',...clipStyle(panel,panel.artRect)}:{};
 const markerStyle=(_panel:Panel,_page:Page)=>({
@@ -32,7 +27,7 @@ export function Reader({manifest,base,preview,onRefreshPreview,refreshing=false}
  const visible: Set<string>=new Set<string>(matched?.pageIds??manifest.pages.map(p=>p.id));
  const matchingPanels=new Set(matched?.panelIds??[]);
  const [active,setActive]=useState<string|null>(null),[status,setStatus]=useState(''),[failed,setFailed]=useState<Record<string,boolean>>({}),[modalPanel,setModalPanel]=useState<Panel|null>(null);
- const [sidebarOpen,setSidebarOpen]=useState(()=>matchMedia('(min-width: 760px)').matches);
+ const [sidebarOpen,setSidebarOpen]=useState(false);
  const generation=useRef(0),current=useRef<HTMLVideoElement|null>(null),timer=useRef<ReturnType<typeof setTimeout>|undefined>(undefined),surface=useRef<HTMLDivElement|null>(null),dialog=useRef<HTMLDialogElement|null>(null),modalHost=useRef<HTMLDivElement|null>(null),longPress=useRef<{timer:ReturnType<typeof setTimeout>;x:number;y:number}|null>(null),suppressClick=useRef(false),lastInput=useRef<'touch'|'mouse'>('mouse'),restoreFocus=useRef<HTMLElement|null>(null),sidebarToggle=useRef<HTMLButtonElement|null>(null);
  const assets=new Map(manifest.assets.map(a=>[a.id,a]));const url=(id:string)=>base+assets.get(id)!.path;
  function cancelLongPress(){if(longPress.current){clearTimeout(longPress.current.timer);longPress.current=null;}}
@@ -79,18 +74,17 @@ export function Reader({manifest,base,preview,onRefreshPreview,refreshing=false}
  function closeSidebar(){setSidebarOpen(false);requestAnimationFrame(()=>sidebarToggle.current?.focus());}
  return <div className={`reader-shell${sidebarOpen?' sidebar-open':''}`}>
   <ReaderSidebar manifest={manifest} preview={preview} pages={manifest.pages} visiblePageIds={visible} selectedTags={selectedTags} tagMode={tagMode} open={sidebarOpen} refreshing={refreshing} onClose={closeSidebar} onTagsChange={(tags,mode)=>{stop();setSelectedTags(tags);setTagMode(mode);}} onRefresh={onRefreshPreview}/>
-  <button ref={sidebarToggle} className={`sidebar-toggle${sidebarOpen?' is-open':''}`} type="button" aria-expanded={sidebarOpen} aria-controls="reader-sidebar" aria-label={sidebarOpen?'読書メニューを閉じる':'読書メニューを開く'} onClick={()=>setSidebarOpen(value=>!value)}><span aria-hidden="true">{sidebarOpen?'×':'☰'}</span></button>
+  <button ref={sidebarToggle} className={`sidebar-toggle${sidebarOpen?' is-open':''}`} type="button" aria-expanded={sidebarOpen} aria-controls="reader-sidebar" aria-label={sidebarOpen?'読書メニューを閉じる':'読書メニューを開く'} onClick={()=>setSidebarOpen(value=>!value)}><span aria-hidden="true">{sidebarOpen?'›':'‹'}</span></button>
   <main className="reader-main">
    <div className="reader-status" role="status" aria-live="polite">{status}</div>
    {!visible.size&&<p className="empty-filter" role="status">該当するシーンを含むページはありません。</p>}
    {manifest.pages.map((page,index)=>({page,index})).filter(({page})=>visible.has(page.id)).map(({page,index})=><section id={`page-${page.id}`} className="reader-page" key={page.id} aria-label={`${index+1}ページ`}>
     <div className="page" style={{aspectRatio:`${page.width}/${page.height}`}}>
-     <img className="layer" src={url(failed[page.id]?page.fallback:page.art)} width={page.width} height={page.height} alt={`${index+1}ページの漫画。本文はページ内の「テキストで読む」にあります。`} onError={()=>{stop();setFailed(f=>({...f,[page.id]:true}));}}/>
+     <img className="layer" src={url(failed[page.id]?page.fallback:page.art)} width={page.width} height={page.height} alt={`${index+1}ページの漫画。本文は読書メニュー内の「テキストで読む」にあります。`} onError={()=>{stop();setFailed(f=>({...f,[page.id]:true}));}}/>
      {!failed[page.id]&&page.panels.filter(p=>p.motion).map(panel=><React.Fragment key={panel.id}><div className="motion" style={{...placement(surfaceRect(panel),page),...clipStyle(panel)}}><div className="motion-media" id={`motion-${panel.id}`} style={panel.clip?relative(panel.artRect,panel.frame):undefined}/></div><div className="panel-actions" style={placement(actionRect(panel),page)}><button className="panel-hit-area" style={hitAreaStyle(panel)} aria-label={`${panelLabel(panel)} ${active===panel.id?'再生中。PCはもう一度クリック、スマホは長押しで拡大':'タップでコマ内再生。スマホは長押しで拡大'}`} aria-pressed={active===panel.id} onPointerDown={e=>beginLongPress(e,panel)} onPointerMove={moveLongPress} onPointerUp={e=>{if(e.pointerType==='touch')cancelLongPress();}} onPointerCancel={cancelLongPress} onPointerLeave={e=>{if(e.pointerType==='touch')cancelLongPress();}} onContextMenu={e=>e.preventDefault()} onClick={e=>activate(panel,e.currentTarget,e)}><span className="sr-only">動きのあるコマ</span></button><span className={`motion-marker ${active===panel.id?'is-active':''}`} style={markerStyle(panel,page)} aria-hidden="true"/></div></React.Fragment>)}
      {!failed[page.id]&&<img className="layer overlay" src={url(page.overlay)} width={page.width} height={page.height} alt="" onError={()=>{stop();setFailed(f=>({...f,[page.id]:true}));}}/>}
      <span className="folio" aria-hidden="true">{String(index+1).padStart(2,'0')}</span>
      {preview&&<div className="preview-page-status">{!!selectedTags.length&&<p>該当シーンのコマ: {page.panels.map((p,i)=>matchingPanels.has(p.id)?i+1:null).filter(Boolean).join('、')}</p>}{page.panels.map((panel,panelIndex)=>{const state=preview.panels.find(p=>p.id===panel.id);if(!state)return null;const notes=[state.art==='pending'?'作画待ち':'',state.lettering==='pending'?'文字配置待ち':'',state.motion==='stale'?'動画は旧版のため静止表示':state.motion==='pending'?'動画待ち':''].filter(Boolean);return notes.length?<p key={panel.id}>{panelIndex+1}コマ目: {notes.join('・')}</p>:null;})}</div>}
-     <details className="page-text"><summary>テキストで読む</summary>{page.panels.map(panel=>panel.text&&<p key={panel.id}>{panel.text}</p>)}</details>
     </div>
    </section>)}
   </main>
