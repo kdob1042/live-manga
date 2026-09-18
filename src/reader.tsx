@@ -19,15 +19,12 @@ const visibleCenter=(panel:Panel)=>{
 };
 const actionRect=(panel:Panel)=>panel.clip?panel.frame:panel.artRect;
 const hitAreaStyle=(panel:Panel)=>panel.clip?{...relative(panel.artRect,panel.frame),right:'auto',bottom:'auto',...clipStyle(panel,panel.artRect)}:{};
-const markerStyle=(panel:Panel,page:Page)=>{
- const box=actionRect(panel),center=visibleCenter(panel);
- const rightSpace=page.width-(box.x+box.width),leftSpace=box.x;
- const side=rightSpace>=leftSpace?'right':'left';
- const outside=Math.max(rightSpace,leftSpace)>12;
- return outside
-  ? {position:'absolute' as const,[side]:'-10px',top:`${(center.y-box.y)/box.height*100}%`,transform:'translateY(-50%)'}
-  : {position:'absolute' as const,right:'6px',top:'6px'};
-};
+const markerStyle=(_panel:Panel,_page:Page)=>({
+ position:'absolute' as const,
+ left:'50%',
+ bottom:'-5px',
+ transform:'translateX(-50%)'
+});
 const LONG_PRESS_MS=450,MOVE_TOLERANCE=10;
 export function Reader({manifest,base,preview,onRefreshPreview,refreshing=false}:{manifest:Manifest;base:string;preview?:Preview;onRefreshPreview?:()=>void;refreshing?:boolean}) {
  const [selectedTags,setSelectedTags]=useState<string[]>([]),[tagMode,setTagMode]=useState<'any'|'all'>('any');
