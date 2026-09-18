@@ -20,6 +20,20 @@ jobs:
       - run: npm run lint && npm run typecheck && npm run build && npm test
       - run: npx playwright install --with-deps chromium webkit
       - run: npm run test:ui
+      - name: Read the pinned producer revision
+        id: producer
+        run: node -e "const fs=require('fs'); const lock=JSON.parse(fs.readFileSync('tests/exporter-lock.json')); if(lock.repository!=='kdob1042/manga-mac'||!/^[a-f0-9]{40}$/.test(lock.commit)) throw Error('Invalid exporter lock'); fs.appendFileSync(process.env.GITHUB_OUTPUT,'commit='+lock.commit+'\n');"
+      - uses: actions/checkout@v4
+        with:
+          repository: kdob1042/manga-mac
+          ref: ${{ steps.producer.outputs.commit }}
+          path: .exporter
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@stable
+      - run: npm ci
+        working-directory: .exporter
+      - name: Native producer output to Chromium and WebKit, without manifest edits
+        run: node scripts/exporter-acceptance.mjs .exporter
       - uses: actions/upload-artifact@v4
         if: always()
         with:
