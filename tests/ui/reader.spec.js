@@ -48,6 +48,20 @@ test('short tap loads one video; natural end returns to poster without layout ch
  await expect(page.getByText('静かな午後。',{exact:true})).toBeVisible();
 });
 
+test('outside panel taps stop the active video while the marker stays in the gutter',async({page})=>{
+ await page.goto('/');
+ const hit=motionHit(page).first();
+ await hit.click();
+ await expect(page.locator('video')).toHaveCount(1);
+ const marker=page.locator('.motion-marker').first(),motion=page.locator('.motion').first();
+ const markerBox=await marker.boundingBox(),motionBox=await motion.boundingBox();
+ if(!markerBox||!motionBox)throw new Error('Expected the motion marker and panel to be visible');
+ const outside=markerBox.x+markerBox.width<=motionBox.x||markerBox.x>=motionBox.x+motionBox.width||markerBox.y+markerBox.height<=motionBox.y||markerBox.y>=motionBox.y+motionBox.height;
+ expect(outside).toBe(true);
+ await page.getByText('テキストで読む',{exact:true}).click();
+ await expect(page.locator('video')).toHaveCount(0);
+});
+
 test('404 and play rejection preserve the readable page and permit retry',async({page})=>{
  await page.route('**/*.mp4',r=>r.fulfill({status:404}));
  await page.goto('/');
