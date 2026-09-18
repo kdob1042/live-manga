@@ -15,5 +15,5 @@ test('demo fixture demonstrates variable manga composition and one motion panel'
  const motion=page.panels.find(panel=>panel.motion);
  assert.ok(motion);
  assert.ok(motion.frame.height>motion.artRect.height);
- assert.ok(bundle.files[manifest.pages[0].overlay].length>1000);
+ const overlayAsset=manifest.assets.find(asset=>asset.id===page.overlay);\n assert.ok(overlayAsset);\n assert.ok(bundle.files[overlayAsset.path].length>1000);
 });
