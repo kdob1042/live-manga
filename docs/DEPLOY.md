@@ -6,7 +6,18 @@
 
 既存方針に合わせ、Cloudflare WorkersのGit連携を唯一の本番デプロイ経路にする。接続repoはlive-manga、production branchはmain。Build commandは `npm ci && npm run build`、deploy commandは `npx wrangler deploy`。ビルドは検証済みの小さな人工fixtureを復元するためNodeだけで実行できる。FFmpeg/Pillowはfixture再生成と実体検証時のみ必要。設定後、main CI成功・対応commit・公開URL・実配信rangeを確認する。dev/PRは人工素材のCIのみ。
 
-R2 bucketは所有者が指定した実名を `wrangler.jsonc` の `r2_buckets` に追加し、bindingを `MEDIA` とする。bucketの公開書込は無効。WorkerはGET/HEADのみ。同一origin `/releases/<releaseId>/...` で配信するのでCORS設定は不要。公開一覧にない刊行版やmanifestにないassetは404。MP4欠損でHTMLへフォールバックしない。
+## 公開経路とCloudflare Accessの所有者
+
+このWorkerは、**Accessで保護した `workers.dev` URL** を公開経路として使う前提で運用する。Cloudflare公式仕様では、`workers_dev: false` を含めて再デプロイすると `workers.dev` ルートが無効になるため、このリポジトリでは `workers_dev: true` を固定する。
+
+- `workers_dev: true` を維持する。これでURLが存在し、Cloudflare Access Applicationが認証を要求する。
+- `workers_dev: false` に変更しない。次回デプロイで公開URLが消える。
+- `wrangler.jsonc` に `routes` または `route` を追加しない。Workersの公開URLはworkers.dev、認証・許可はCloudflare Dashboard側のAccess Application/Policyの所有物とする。
+- このリポジトリにはAccessのポリシー、API token、カスタムドメインを保存しない。
+- Dashboardでは、対象Workerの `workers.dev` URLにAccess Applicationを関連付け、Allowポリシーを設定する。ポリシーを作成しただけではアプリケーション保護は成立しない。
+- CIの `npm run verify:deploy-config` が、`workers_dev`、ルート宣言、非公開MEDIA bindingの変更を検査する。アクセス経路を変更するときは、このリポジトリの通常開発PRとは別の運用変更として扱う。
+
+R2の公開Development URLとCustom Domainは無効のままにする。作品ファイルはWorkerの同一origin経由で配信し、R2を直接公開しない。
 
 ## 完成作品の刊行
 
