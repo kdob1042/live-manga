@@ -6,6 +6,7 @@ test.beforeEach(async({page})=>{
  test.skip(!release,'Run scripts/exporter-acceptance.mjs with the pinned manga-mac checkout');
  await page.goto('/?release='+release);
  await page.locator('.sidebar-toggle').click();
+ await expect(page.locator('.reader-main')).toHaveCSS('margin-left','320px');
  await expect(page.getByRole('heading',{level:1})).toHaveText('Artificial 4/6-panel crop calibration');
  await expect(page.locator('.page')).toHaveCount(2);
  await page.addStyleTag({content:'.page{width:1600px;height:2260px}main{max-width:1640px}.panel-hit-area:focus-visible{outline:none}'});
