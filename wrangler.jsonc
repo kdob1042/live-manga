@@ -2,9 +2,9 @@
   "name": "live-manga",
   "main": "src/worker.mjs",
   "compatibility_date": "2026-09-16",
-  // Keep the Worker off workers.dev. Public access is controlled by the
-  // Cloudflare Access application and its dashboard-managed hostname/route.
-  "workers_dev": false,
+  // Keep workers.dev enabled: Cloudflare Access limits this publication URL.
+  // Setting this to false disables the route on the next redeploy.
+  "workers_dev": true,
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",
