@@ -7,7 +7,7 @@ test.beforeEach(async({page})=>{
  await page.goto('/?release='+release);
  await expect(page.getByRole('heading',{level:1})).toHaveText('Artificial 4/6-panel crop calibration');
  await expect(page.locator('.page')).toHaveCount(2);
- await page.addStyleTag({content:'.page{width:1600px;height:2260px}main{max-width:1640px}.panel-control span,.expand-control{visibility:hidden}.panel-control:focus-visible{outline:none}'});
+ await page.addStyleTag({content:'.page{width:1600px;height:2260px}main{max-width:1640px}.panel-hit-area:focus-visible{outline:none}'});
  await expect.poll(()=>page.locator('.page img').evaluateAll(images=>images.every(im=>im.complete&&im.naturalWidth>0))).toBe(true);
 });
 async function difference(page,a,b){
@@ -23,7 +23,7 @@ for(const [index,panelId] of [[0,'s:p0'],[0,'s:p1'],[1,'s:p4']])test(`unaltered 
  const manifest=await (await page.request.get(`/releases/${release}/live-manga.json`)).json();
  expect(manifest.schemaVersion).toBe('2.0.0');expect(manifest.pages.map(p=>p.panels.length)).toEqual([4,6]);
  const panel=manifest.pages[index].panels.find(p=>p.id===panelId),host=page.locator(`[id="motion-${panelId}"]`);
- const action=host.locator('..').locator('xpath=following-sibling::div[1]').locator('.panel-control');
+ const action=host.locator('..').locator('xpath=following-sibling::div[1]').locator('.panel-hit-area');
  await action.focus();
  const before=await surface.screenshot({path:test.info().outputPath("still.png")});
  await action.press('Enter');await expect(page.locator('video')).toHaveCount(1);
@@ -48,12 +48,13 @@ test('slanted crop clips pointer hits; enlarged playback keeps the same transfor
  // Inside the frame rectangle but outside the clipped upper-left diagonal.
  await page.mouse.click(box.x+(p.frame.x+5)*scale,box.y+(p.frame.y+5)*scale);
  await expect(page.locator('video')).toHaveCount(0);
- const target=page.locator('[id="motion-s:p0"]').locator('..').locator('xpath=following-sibling::div[1]').locator('.panel-control');
- // Touch/long-press the compact playback button, which is inside the convex quad.
+ const target=page.locator('[id="motion-s:p0"]').locator('..').locator('xpath=following-sibling::div[1]').locator('.panel-hit-area');
+ // Touch/long-press the invisible panel hit area, which is clipped to the convex quad.
  const targetBox=await target.boundingBox();
- if(!targetBox)throw new Error('Expected the clipped panel playback button to be visible');
+ if(!targetBox)throw new Error('Expected the clipped panel hit area to be visible');
  const x=targetBox.x+targetBox.width/2,y=targetBox.y+targetBox.height/2;
- await page.mouse.move(x,y);await page.mouse.down();await page.waitForTimeout(500);await page.mouse.up();
+ const point={pointerType:'touch',button:0,clientX:x,clientY:y};
+ await target.dispatchEvent('pointerdown',point);await page.waitForTimeout(500);await target.dispatchEvent('pointerup',point);
  await expect(page.getByRole('dialog')).toBeVisible();await expect.poll(()=>page.locator('video').evaluate(v=>v.currentTime)).toBeGreaterThan(0);
  const clip=page.locator('.modal-motion.cropped'),cb=await clip.boundingBox(),vb=await page.locator('video').boundingBox();
  expect(await clip.evaluate(e=>getComputedStyle(e).clipPath)).toContain('polygon(');
@@ -67,7 +68,7 @@ test('cropped video stops when its visible frame leaves the viewport',async({pag
  const manifest=await (await page.request.get(`/releases/${release}/live-manga.json`)).json();
  const panel=manifest.pages[0].panels[0];
  const host=page.locator('[id="motion-s:p0"]');
- await host.locator('..').locator('xpath=following-sibling::div[1]').locator('.panel-control').press('Enter');
+ await host.locator('..').locator('xpath=following-sibling::div[1]').locator('.panel-hit-area').press('Enter');
  await expect.poll(()=>page.locator('video').evaluate(v=>v.currentTime)).toBeGreaterThan(0);
  // The clipped frame is gone, but the larger source rectangle still intersects the viewport.
  await page.evaluate(y=>window.scrollTo(0,y),box.y+panel.frame.y+panel.frame.height+5);
