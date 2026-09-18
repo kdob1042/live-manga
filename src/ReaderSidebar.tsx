@@ -85,12 +85,12 @@ export default function ReaderSidebar({
           <details className="sidebar-text-reader">
             <summary id="reader-text-heading">テキストで読む</summary>
             <div className="sidebar-text-list">
-              {textPages.map(({page, index}) => <details key={page.id} className="sidebar-text-page">
-                <summary><span>{pageLabel(page, index)}</span><small>{page.panels.filter(panel => panel.text).length}件</small></summary>
+              {textPages.map(({page, index}) => <article key={page.id} className="sidebar-text-page">
+                <h3 className="sidebar-text-page-title"><span>{pageLabel(page, index)}</span><small>{page.panels.filter(panel => panel.text).length}件</small></h3>
                 <div className="sidebar-text-body">
                   {page.panels.map(panel => panel.text ? <p key={panel.id}>{panel.text}</p> : null)}
                 </div>
-              </details>)}
+              </article>)}
             </div>
             {!textPages.length && <p className="sidebar-empty">本文はありません。</p>}
           </details>
