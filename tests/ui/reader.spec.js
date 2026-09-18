@@ -56,8 +56,12 @@ test('outside panel taps stop the active video while the marker stays in the gut
  const marker=page.locator('.motion-marker').first(),motion=page.locator('.motion').first();
  const markerBox=await marker.boundingBox(),motionBox=await motion.boundingBox();
  if(!markerBox||!motionBox)throw new Error('Expected the motion marker and panel to be visible');
- const outside=markerBox.x+markerBox.width<=motionBox.x||markerBox.x>=motionBox.x+motionBox.width||markerBox.y+markerBox.height<=motionBox.y||markerBox.y>=motionBox.y+motionBox.height;
- expect(outside).toBe(true);
+ const markerCenter=markerBox.x+markerBox.width/2,motionCenter=motionBox.x+motionBox.width/2;
+ expect(markerBox.width).toBeGreaterThanOrEqual(14);
+ expect(markerBox.height).toBeGreaterThanOrEqual(2);
+ expect(Math.abs(markerCenter-motionCenter)).toBeLessThan(2);
+ expect(markerBox.y).toBeGreaterThan(motionBox.y+motionBox.height-8);
+ expect(markerBox.y).toBeLessThan(motionBox.y+motionBox.height+8);
  await page.getByText('テキストで読む',{exact:true}).click();
  await expect(page.locator('video')).toHaveCount(0);
 });
