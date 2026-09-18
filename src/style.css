@@ -7,10 +7,10 @@
 .panel-actions{overflow:visible}
 .panel-hit-area{position:absolute;inset:0;display:block;width:auto;height:auto;border:0;padding:0;background:transparent;cursor:pointer;pointer-events:auto;touch-action:pan-y pinch-zoom;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
 .panel-hit-area:focus-visible{outline:2px solid #cf7a33;outline-offset:-3px}
-.motion-marker{z-index:2;display:block;width:11px;height:11px;border:1px solid #fff9;border-radius:50%;opacity:.34;pointer-events:none;filter:drop-shadow(0 1px 3px #0008)}
-.motion-marker::before{content:"";position:absolute;inset:2px;border:1px solid #fff9;border-radius:50%}
-.motion-marker::after{content:"";position:absolute;inset:4px;border-radius:50%;background:#fff}
-.motion-marker.is-active{opacity:.58;box-shadow:0 0 0 2px #cb773355}
+.motion-marker{position:relative;z-index:2;display:block;width:8px;height:8px;border:1px solid #fff9;border-radius:50%;opacity:.3;pointer-events:none;filter:drop-shadow(0 1px 3px #0008)}
+.motion-marker::before{content:"";position:absolute;inset:1px;border:1px solid #fff9;border-radius:50%}
+.motion-marker::after{content:"";position:absolute;inset:3px;border-radius:50%;background:#fff}
+.motion-marker.is-active{opacity:.52;box-shadow:0 0 0 2px #cb773344}
 @media(hover:hover){.motion-marker{opacity:.22}.panel-actions:hover .motion-marker{opacity:.5}.panel-actions:focus-within .motion-marker{opacity:.58}}
 
 /* Keep the menu compact: work navigation is a horizontal strip, followed by the TOC. */
