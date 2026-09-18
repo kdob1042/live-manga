@@ -62,6 +62,7 @@ export function Reader({manifest,base,preview,onRefreshPreview,refreshing=false}
  }
  function beginLongPress(event:React.PointerEvent<HTMLButtonElement>,panel:Panel){
   if(event.button!==0)return;
+  event.currentTarget.focus({preventScroll:true});
   lastInput.current=event.pointerType==='touch'?'touch':'mouse';
   suppressClick.current=false;
   if(event.pointerType!=='touch'){cancelLongPress();return;}
