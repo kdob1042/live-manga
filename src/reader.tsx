@@ -3,9 +3,52 @@ import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { validate } from '../contracts/validate.mjs';
 import './style.css';
+import type {Preview} from '../contracts/preview-types';
+import {previewMatches} from '../contracts/preview.mjs';
+import PreviewControls from './PreviewControls';
+import PreviewEntry,{parsePreviewLocation} from './PreviewEntry';
+const panelLabel=(panel:Panel)=>panel.text||'画像のみのコマ';
 const placement=(r:Rect,p:Page)=>({left:`${r.x/p.width*100}%`,top:`${r.y/p.height*100}%`,width:`${r.width/p.width*100}%`,height:`${r.height/p.height*100}%`});
+const relative=(r:Rect,box:Rect)=>({left:`${(r.x-box.x)/box.width*100}%`,top:`${(r.y-box.y)/box.height*100}%`,width:`${r.width/box.width*100}%`,height:`${r.height/box.height*100}%`});
+const clipStyle=(panel:Panel)=>panel.clip?{clipPath:`polygon(${panel.clip.map(([x,y])=>`${(x-panel.frame.x)/panel.frame.width*100}% ${(y-panel.frame.y)/panel.frame.height*100}%`).join(',')})`}:{};
+const surfaceRect=(panel:Panel)=>panel.clip?panel.frame:panel.artRect;
+const visibleCenter=(panel:Panel)=>{
+ const f=panel.frame,r=panel.artRect;
+ if(panel.clip&&r.width>=f.width&&r.height>=f.height)return {x:panel.clip.reduce((n,p)=>n+p[0],0)/4,y:panel.clip.reduce((n,p)=>n+p[1],0)/4};
+ return {x:r.x+r.width/2,y:r.y+r.height/2};
+};
+const hintPosition=(panel:Panel,expand=false)=>{
+ if(!panel.clip)return {};
+ const box=expand?panel.frame:panel.artRect,{x,y}=visibleCenter(panel);
+ return {position:'absolute' as const,left:`${(x-box.x)/box.width*100}%`,top:`${(y-box.y)/box.height*100}%`,right:'auto',transform:expand?'translate(10%, -50%)':'translate(-110%, -50%)'};
+};
+const panelControlStyle=(panel:Panel)=>{
+ if(!panel.clip)return {};
+ const frame=panel.frame,clip=panel.clip;
+ const candidates:[[number,number],[number,number],[number,number],[number,number]]=[
+  [frame.x+frame.width*.84,frame.y+frame.height*.84],
+  [frame.x+frame.width*.16,frame.y+frame.height*.84],
+  [frame.x+frame.width*.84,frame.y+frame.height*.16],
+  [frame.x+frame.width*.16,frame.y+frame.height*.16]
+ ];
+ const inside=(x:number,y:number)=>{
+  let positive=false,negative=false;
+  for(let i=0;i<clip.length;i++){
+   const [ax,ay]=clip[i],[bx,by]=clip[(i+1)%clip.length];
+   const cross=(bx-ax)*(y-ay)-(by-ay)*(x-ax);
+   positive ||= cross>0;negative ||= cross<0;
+  }
+  return !(positive&&negative);
+ };
+ const center=visibleCenter(panel),[x,y]=candidates.find(([px,py])=>inside(px,py))??[center.x,center.y];
+ return {left:`${(x-frame.x)/frame.width*100}%`,top:`${(y-frame.y)/frame.height*100}%`,right:'auto',bottom:'auto',transform:'translate(-50%, -50%)'};
+};
 const LONG_PRESS_MS=450,MOVE_TOLERANCE=10;
-export function Reader({manifest,base}:{manifest:Manifest;base:string}) {
+export function Reader({manifest,base,preview}:{manifest:Manifest;base:string;preview?:Preview}) {
+ const [selectedTags,setSelectedTags]=useState<string[]>([]),[tagMode,setTagMode]=useState<'any'|'all'>('any');
+ const matched=preview?previewMatches(preview,selectedTags,tagMode):null;
+ const visible=new Set(matched?.pageIds??manifest.pages.map(p=>p.id));
+ const matchingPanels=new Set(matched?.panelIds??[]);
  const [still,setStill]=useState(()=>matchMedia('(prefers-reduced-motion: reduce)').matches),[active,setActive]=useState<string|null>(null),[status,setStatus]=useState(''),[failed,setFailed]=useState<Record<string,boolean>>({}),[modalPanel,setModalPanel]=useState<Panel|null>(null);
  const generation=useRef(0),current=useRef<HTMLVideoElement|null>(null),timer=useRef<ReturnType<typeof setTimeout>|undefined>(undefined),surface=useRef<HTMLDivElement|null>(null),dialog=useRef<HTMLDialogElement|null>(null),modalHost=useRef<HTMLDivElement|null>(null),longPress=useRef<{timer:ReturnType<typeof setTimeout>;x:number;y:number}|null>(null),suppressClick=useRef(false),restoreFocus=useRef<HTMLElement|null>(null);
  const assets=new Map(manifest.assets.map(a=>[a.id,a]));const url=(id:string)=>base+assets.get(id)!.path;
@@ -15,8 +58,8 @@ export function Reader({manifest,base}:{manifest:Manifest;base:string}) {
  useEffect(()=>{const hide=()=>{if(document.hidden)stop();};document.addEventListener('visibilitychange',hide);return()=>{document.removeEventListener('visibilitychange',hide);stop();};},[]);
  useEffect(()=>{if(!active)return;const observer=new IntersectionObserver(entries=>{if(entries.some(e=>!e.isIntersecting))stop();},{threshold:0});observer.observe(surface.current!);return()=>observer.disconnect();},[active]);
  function start(panel:Panel,host:HTMLDivElement,{expanded=false,resumeAt=0}={}) {
-  const epoch=generation.current,video=document.createElement('video');surface.current=host;
-  video.playsInline=true;video.muted=true;video.controls=expanded;video.preload='none';if(!expanded)video.setAttribute('aria-hidden','true');else video.setAttribute('aria-label',`${panel.text} 動画`);video.style.opacity='0';video.src=url(panel.motion!.asset);host.append(video);current.current=video;setActive(panel.id);setStatus(expanded?'拡大動画を読み込み中…':'読み込み中…');
+  const epoch=generation.current,video=document.createElement('video');surface.current=host.parentElement as HTMLDivElement;
+  video.playsInline=true;video.muted=true;video.controls=expanded;video.preload='none';if(!expanded)video.setAttribute('aria-hidden','true');else video.setAttribute('aria-label',`${panelLabel(panel)} 動画`);video.style.opacity='0';video.src=url(panel.motion!.asset);host.append(video);current.current=video;setActive(panel.id);setStatus(expanded?'拡大動画を読み込み中…':'読み込み中…');
   const valid=()=>generation.current===epoch&&current.current===video;
   const fail=()=>{if(valid())stop('動画を読み込めませんでした。コマを押すと再試行できます。');};
   video.onloadedmetadata=()=>{if(valid()&&resumeAt>0)video.currentTime=Math.min(resumeAt,Math.max(0,video.duration-.05));};
@@ -33,16 +76,18 @@ export function Reader({manifest,base}:{manifest:Manifest;base:string}) {
  function beginLongPress(event:React.PointerEvent<HTMLButtonElement>,panel:Panel){if(event.button!==0)return;cancelLongPress();suppressClick.current=false;const target=event.currentTarget;longPress.current={x:event.clientX,y:event.clientY,timer:setTimeout(()=>{longPress.current=null;suppressClick.current=true;expand(panel,target);},LONG_PRESS_MS)};}
  function moveLongPress(event:React.PointerEvent<HTMLButtonElement>){const press=longPress.current;if(press&&Math.hypot(event.clientX-press.x,event.clientY-press.y)>MOVE_TOLERANCE)cancelLongPress();}
  function activate(panel:Panel){if(suppressClick.current){suppressClick.current=false;return;}play(panel);}
- return <><header><a href="/" aria-label="Live Manga">LIVE <b>MANGA</b></a><label><input type="checkbox" checked={still} onChange={e=>{stop();setStill(e.target.checked);}}/>静止漫画として読む</label></header><main><div className="intro"><span>LIVE MANGA / 01</span><h1>{manifest.title}</h1><p>自分のペースで読む。触れたコマだけ、動き出す。</p></div><div className="status" role="status" aria-live="polite">{status||'▶ のあるコマに触れて再生'}</div>{manifest.pages.map((page,index)=><section key={page.id} aria-label={`${index+1}ページ`}><div className="page" style={{aspectRatio:`${page.width}/${page.height}`}}>
+ return <><header><a href="/" aria-label="Live Manga">LIVE <b>MANGA</b></a><label><input type="checkbox" checked={still} onChange={e=>{stop();setStill(e.target.checked);}}/>静止漫画として読む</label></header><main><div className="intro"><span>LIVE MANGA / 01</span><h1>{manifest.title}</h1><p>自分のペースで読む。触れたコマだけ、動き出す。</p></div>{preview&&<PreviewControls preview={preview} selected={selectedTags} mode={tagMode} count={visible.size} onChange={(tags,mode)=>{stop();setSelectedTags(tags);setTagMode(mode);}}/>}{!visible.size&&<p role="status">該当するシーンを含むページはありません。</p>}<div className="status" role="status" aria-live="polite">{status||'▶ のあるコマをタップして再生。長押しで拡大'}</div>{manifest.pages.map((page,index)=>({page,index})).filter(({page})=>visible.has(page.id)).map(({page,index})=><section key={page.id} aria-label={`${index+1}ページ`}><div className="page" style={{aspectRatio:`${page.width}/${page.height}`}}>
  <img className="layer" src={url(failed[page.id]?page.fallback:page.art)} width={page.width} height={page.height} alt={`${index+1}ページの漫画。本文はページ下の「テキストで読む」にあります。`} onError={()=>{stop();setFailed(f=>({...f,[page.id]:true}));}}/>
- {!failed[page.id]&&page.panels.filter(p=>p.motion).map(panel=><React.Fragment key={panel.id}><div className="motion" id={`motion-${panel.id}`} style={placement(panel.artRect,page)}/>{!still&&<div className="panel-actions" style={placement(panel.artRect,page)}><button className={`panel-control ${active===panel.id?'playing':''}`} aria-label={`${panel.text} ${active===panel.id?'停止':'再生'}。長押しで拡大`} onPointerDown={e=>beginLongPress(e,panel)} onPointerMove={moveLongPress} onPointerUp={cancelLongPress} onPointerCancel={cancelLongPress} onContextMenu={e=>e.preventDefault()} onClick={()=>activate(panel)}><span>{active===panel.id?'Ⅱ':'▶'}</span></button><button className="expand-control" aria-label={`${panel.text}の動画を大きく表示`} onClick={e=>expand(panel,e.currentTarget)}><span aria-hidden="true">⛶</span></button></div>}</React.Fragment>)}
+ {!failed[page.id]&&page.panels.filter(p=>p.motion).map(panel=><React.Fragment key={panel.id}><div className="motion" style={{...placement(surfaceRect(panel),page),...clipStyle(panel)}}><div className="motion-media" id={`motion-${panel.id}`} style={panel.clip?relative(panel.artRect,panel.frame):undefined}/></div>{!still&&<div className="panel-actions" style={{...placement(surfaceRect(panel),page),...clipStyle(panel)}}><button className={`panel-control ${active===panel.id?'playing':''}`} style={panelControlStyle(panel)} aria-label={`${panelLabel(panel)} ${active===panel.id?'停止':'再生'}。長押しで拡大`} onPointerDown={e=>beginLongPress(e,panel)} onPointerMove={moveLongPress} onPointerUp={cancelLongPress} onPointerCancel={cancelLongPress} onPointerLeave={cancelLongPress} onContextMenu={e=>e.preventDefault()} onClick={()=>activate(panel)}><span>{active===panel.id?'Ⅱ':'▶'}</span></button><button className="expand-control" style={hintPosition(panel,true)} aria-label={`${panelLabel(panel)}の動画を大きく表示`} onClick={e=>expand(panel,e.currentTarget)}><span aria-hidden="true">⛶</span></button></div>}</React.Fragment>)}
  {!failed[page.id]&&<img className="layer overlay" src={url(page.overlay)} width={page.width} height={page.height} alt="" onError={()=>{stop();setFailed(f=>({...f,[page.id]:true}));}}/>}
- </div><p className="folio">{String(index+1).padStart(2,'0')}</p><details><summary>テキストで読む</summary>{page.panels.map(panel=><p key={panel.id}>{panel.text}</p>)}</details></section>)}</main><footer>LIVE MANGA · {manifest.releaseId}</footer>
- <dialog ref={dialog} className="video-dialog" aria-label={modalPanel?`${modalPanel.text}の拡大動画`:'拡大動画'} onCancel={e=>{e.preventDefault();stop();}} onClick={e=>{if(e.target===e.currentTarget)stop();}}><div className="video-dialog-shell"><div className="video-dialog-head"><p>{modalPanel?.text}</p><button className="dialog-close" aria-label="拡大動画を閉じる" onClick={()=>stop()}>×</button></div><div ref={modalHost} className="modal-motion"/></div></dialog></>;
+ </div><p className="folio">{String(index+1).padStart(2,'0')}</p>{preview&&<div className="preview-page-status">{!!selectedTags.length&&<p>該当シーンのコマ: {page.panels.map((p,i)=>matchingPanels.has(p.id)?i+1:null).filter(Boolean).join('、')}</p>}{page.panels.map((panel,index)=>{const state=preview.panels.find(p=>p.id===panel.id)!;const notes=[state.art==='pending'?'作画待ち':'',state.lettering==='pending'?'文字配置待ち':'',state.motion==='stale'?'動画は旧版のため静止表示':state.motion==='pending'?'動画待ち':''].filter(Boolean);return notes.length?<p key={panel.id}>{index+1}コマ目: {notes.join('・')}</p>:null;})}</div>}<details><summary>テキストで読む</summary>{page.panels.map(panel=>panel.text&&<p key={panel.id}>{panel.text}</p>)}</details></section>)}</main><footer>LIVE MANGA · {manifest.releaseId}</footer>
+ <dialog ref={dialog} className="video-dialog" aria-label={modalPanel?`${panelLabel(modalPanel)}の拡大動画`:'拡大動画'} onCancel={e=>{e.preventDefault();stop();}} onClick={e=>{if(e.target===e.currentTarget)stop();}}><div className="video-dialog-shell"><div className="video-dialog-head"><p>{modalPanel?panelLabel(modalPanel):''}</p><button className="dialog-close" aria-label="拡大動画を閉じる" onClick={()=>stop()}>×</button></div><div className={`modal-motion ${modalPanel?.clip?'cropped':''}`} style={modalPanel?.clip?{...clipStyle(modalPanel),aspectRatio:`${modalPanel.frame.width}/${modalPanel.frame.height}`,width:`min(100%, calc((94dvh - 58px) * ${modalPanel.frame.width/modalPanel.frame.height}))`}:undefined}><div ref={modalHost} className={modalPanel?.clip?'motion-media':'modal-media'} style={modalPanel?.clip?relative(modalPanel.artRect,modalPanel.frame):undefined}/></div></div></dialog></>;
 }
 async function start() {
  const root=createRoot(document.getElementById('root')!);
  try {
+  const scope=parsePreviewLocation(location.href);
+  if(scope){root.render(<PreviewEntry scope={scope} render={(preview,base)=><Reader key={base} manifest={preview.manifest} base={base} preview={preview}/>}/>);return;}
   let release=new URL(location.href).searchParams.get('release');
   if(!release){const catalog=await fetch('/catalog.json',{signal:AbortSignal.timeout(15000),cache:'no-cache'});if(catalog.ok){const text=await catalog.text();if(text.length>1024)throw Error('公開一覧が不正です');release=JSON.parse(text).current;}else if(catalog.status!==404)throw Error('公開一覧を取得できません');}
   if(release&&!/^[a-zA-Z0-9:_-]{1,128}$/.test(release))throw Error('刊行版の指定が不正です');
