@@ -16,7 +16,7 @@ async function getJSON(url:string){
  if(!response.ok)throw Error(response.status===404?'まだ転送済みのプレビューがありません':'プレビューを取得できませんでした');
  const text=await response.text();if(text.length>5*1024*1024)throw Error('プレビューが大きすぎます');return JSON.parse(text);
 }
-export default function PreviewEntry({scope,render}:{scope:{workId:string;episodeId:string;revision:string|null};render:(preview:Preview,base:string)=>React.ReactNode}){
+export default function PreviewEntry({scope,render}:{scope:{workId:string;episodeId:string;revision:string|null};render:(preview:Preview,base:string,onRefresh:()=>void,refreshing:boolean)=>React.ReactNode}){
  const [preview,setPreview]=useState<Preview|null>(null),[base,setBase]=useState(''),[error,setError]=useState(''),[login,setLogin]=useState(false),[key,setKey]=useState(''),[loading,setLoading]=useState(false);
  const prefix=`/previews/${scope.workId}/${scope.episodeId}/`;
  async function load(revision:string|null){
@@ -34,7 +34,7 @@ export default function PreviewEntry({scope,render}:{scope:{workId:string;episod
   event.preventDefault();setLoading(true);setError('');const token=key;setKey('');
   try{const response=await fetch('/preview-session',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({workId:scope.workId,episodeId:scope.episodeId,token}),signal:AbortSignal.timeout(15000)});if(!response.ok)throw Error('閲覧用キー・有効期限・作品の権限を確認してください');await load(scope.revision);}catch(e){setError(e instanceof Error?e.message:'認証できませんでした');}finally{setLoading(false);}
  }
- return <><div className="preview-entry" aria-label="非公開プレビュー"><strong>非公開プレビュー</strong><button disabled={loading} onClick={()=>void load(null)}>最新版を開く</button>{loading&&<span role="status">確認中</span>}{error&&<p role="alert">{error}</p>}
- {login&&<form onSubmit={authenticate}><label>閲覧用キー<input type="password" autoComplete="off" value={key} onChange={e=>setKey(e.target.value)} required/></label><button disabled={loading||!key}>開く</button><p>作者用の転送キーではなく、この作品の閲覧権限だけを持つキーを使用します。</p></form>}</div>
- {preview&&render(preview,base)}</>;
+ return <>{!preview&&<div className="preview-entry" aria-label="非公開プレビュー"><strong>非公開プレビュー</strong>{loading&&<span role="status">確認中</span>}{error&&<p role="alert">{error}</p>}
+ {login&&<form onSubmit={authenticate}><label>閲覧用キー<input type="password" autoComplete="off" value={key} onChange={e=>setKey(e.target.value)} required/></label><button disabled={loading||!key}>開く</button><p>作者用の転送キーではなく、この作品の閲覧権限だけを持つキーを使用します。</p></form>}</div>}
+ {preview&&render(preview,base,()=>void load(null),loading)}</>;
 }
