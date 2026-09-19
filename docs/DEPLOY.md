@@ -6,6 +6,18 @@
 
 既存方針に合わせ、Cloudflare WorkersのGit連携を唯一の本番デプロイ経路にする。接続repoはlive-manga、production branchはmain。Build commandは `npm ci && npm run build`、production deploy commandは `npx wrangler deploy`。ビルドは検証済みの小さな人工fixtureを復元するためNodeだけで実行できる。FFmpeg/Pillowはfixture再生成と実体検証時のみ必要。設定後、main CI成功・対応commit・公開URL・実配信rangeを確認する。
 
+## production / dev の公開制御
+
+`wrangler.jsonc` はproduction専用、`wrangler.dev.jsonc` はdev専用とする。2つの設定はWorker名、R2 bucket、公開カタログキーを分け、同じ作品の制作確認がproductionの公開データを参照しないようにする。
+
+- production: main → `live-manga` → 既存の非公開 `live-manga-media-prod` → `publication/catalog.json`
+- dev: dev → `live-manga-dev` → 別途作成する非公開 `live-manga-media-dev` → `publication/catalog.dev.json`
+- 両環境とも `/works/*` と `/catalog.json` を `run_worker_first` に含める。これを外すと静的AssetがWorkerの公開ゲートを迂回する。
+- devは `DEV_AUTH_REQUIRED=true` のままにし、Cloudflare Accessもdev WorkerのURLに別途関連付ける。
+- productionの `REQUIRE_PUBLICATION_CATALOG` は、検証済みのproduction catalogを配置するまで `false` のままにできる。切替手順ではcatalogの内容・R2 prefix・URL直アクセスを確認した後に `true` へ変更する。`true` にした後は、catalogが無い場合も旧legacy経路へフォールバックしない。
+
+`live-manga-media-dev` の作成、両Workerのデプロイ先、Access Application / Policy、custom domain、production切替の承認は人間がCloudflare Dashboardで設定する。リポジトリへaccount ID、token、Access設定、実際のドメインは保存しない。
+
 ### devブランチのPreview
 
 `dev`を確認用Previewの基準ブランチにする。本番の`main`やAccessで保護された本番URLをPreview設定から変更しない。

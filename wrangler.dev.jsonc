@@ -1,0 +1,23 @@
+{
+  "name": "live-manga-dev",
+  "main": "src/worker.mjs",
+  "compatibility_date": "2026-09-16",
+  "workers_dev": true,
+  "vars": {
+    "ENVIRONMENT": "dev",
+    "PUBLICATION_CATALOG_KEY": "publication/catalog.dev.json",
+    "REQUIRE_PUBLICATION_CATALOG": "true",
+    "DEV_AUTH_REQUIRED": "true"
+  },
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "run_worker_first": ["/releases/*", "/works/*", "/catalog.json"]
+  },
+  "r2_buckets": [
+    {
+      "binding": "MEDIA",
+      "bucket_name": "live-manga-media-dev"
+    }
+  ]
+}

@@ -26,7 +26,7 @@ if (!media || media.bucket_name !== 'live-manga-media-prod') {
   errors.push('the private MEDIA binding must target live-manga-media-prod');
 }
 const runWorkerFirst = config.assets?.run_worker_first ?? [];
-for (const route of ['/releases/*', '/catalog.json']) {
+for (const route of ['/releases/*', '/works/*', '/catalog.json']) {
   if (!runWorkerFirst.includes(route)) {
     errors.push(`assets.run_worker_first must include ${route}`);
   }
