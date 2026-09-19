@@ -3,7 +3,6 @@ import {parseRange} from './http-range.mjs';
 import {handlePreview} from './preview-worker.mjs';
 import {
   findPublication,
-  findPublicationByRelease,
   normalizePublicationCatalog,
   parsePublicationRoute,
   publicationDecision,
@@ -48,10 +47,6 @@ async function loadPublication(env) {
   }
 }
 
-function mustUsePublication(env, publication) {
-  return publication.configured || env.REQUIRE_PUBLICATION_CATALOG === 'true';
-}
-
 async function serveApp(request, env) {
   const target = new URL('/', request.url);
   return env.ASSETS.fetch(new Request(target, request));
@@ -68,12 +63,6 @@ async function readMangaManifest(env, entry) {
   } catch {
     return null;
   }
-}
-
-async function serveMangaManifest(request, env, entry) {
-  const loaded = await readMangaManifest(env, entry);
-  if (!loaded) return new Response(null, {status: 502});
-  return json(loaded.manifest, 200, 'no-cache');
 }
 
 async function serveNovelContent(request, env, entry) {
