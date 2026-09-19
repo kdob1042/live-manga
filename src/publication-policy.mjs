@@ -1,6 +1,14 @@
 export const PUBLICATION_SCHEMA = 'publication/v1';
-export const PUBLICATION_FORMATS = new Set(['novel', 'manga']);
+export const PUBLICATION_FORMATS = new Set(['manga']);
 export const IDENTIFIER = /^[a-zA-Z0-9:_-]{1,128}$/;
+
+export function publicNovelUrl(value) {
+  if (typeof value !== 'string' || value.length > 2048) return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' && !url.username && !url.password ? url.href : null;
+  } catch { return null; }
+}
 
 function isRecord(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -58,7 +66,7 @@ export function normalizePublicationCatalog(value, environment = 'production') {
     if (workIds.has(workId)) throw new Error(`Duplicate workId: ${workId}`);
     workIds.add(workId);
     if (typeof rawWork.title !== 'string' || !rawWork.title.length) throw new Error(`Invalid title for ${workId}`);
-    const formats = normalizeFormats(rawWork).map((rawFormat) => {
+    const formats = normalizeFormats(rawWork).filter(format => format?.format !== 'novel').map((rawFormat) => {
       if (!isRecord(rawFormat) || !PUBLICATION_FORMATS.has(rawFormat.format) || !Array.isArray(rawFormat.episodes)) {
         throw new Error(`Invalid format for ${workId}`);
       }
@@ -74,7 +82,7 @@ export function normalizePublicationCatalog(value, environment = 'production') {
       });
       return {format: rawFormat.format, episodes};
     });
-    return {workId, title: rawWork.title, description: typeof rawWork.description === 'string' ? rawWork.description : '', formats};
+    return {workId, title: rawWork.title, description: typeof rawWork.description === 'string' ? rawWork.description : '', novelUrl: rawWork.novelPublished === true ? publicNovelUrl(rawWork.novelUrl) : null, formats};
   });
   return {schemaVersion: PUBLICATION_SCHEMA, environment, generatedAt: value.generatedAt ?? null, works, entries};
 }
@@ -117,7 +125,7 @@ export function publicCatalog(catalog, now = new Date()) {
       }
       if (episodes.length) formats.push({format: format.format, episodes});
     }
-    if (formats.length) works.push({workId: work.workId, title: work.title, description: work.description, formats});
+    if (formats.length) works.push({workId: work.workId, title: work.title, description: work.description, ...(work.novelUrl ? {novelUrl: work.novelUrl} : {}), formats});
   }
   return {schemaVersion: PUBLICATION_SCHEMA, environment: catalog.environment, works};
 }
@@ -134,7 +142,7 @@ export function parsePublicationRoute(pathname) {
   const value = pathname.replace(/\/+$/, '') || '/';
   const work = new RegExp(`^/works/(${IDENTIFIER.source.slice(1, -1)})$`).exec(value);
   if (work) return {kind: 'work', workId: work[1]};
-  const content = new RegExp(`^/works/(${IDENTIFIER.source.slice(1, -1)})/(novel|manga)/(${IDENTIFIER.source.slice(1, -1)})(?:/(content\\.json|manifest\\.json|assets/([a-f0-9]{64}\\.(?:png|jpg|webp|mp4))))?$`).exec(value);
+  const content = new RegExp(`^/works/(${IDENTIFIER.source.slice(1, -1)})/(manga)/(${IDENTIFIER.source.slice(1, -1)})(?:/(manifest\\.json|assets/([a-f0-9]{64}\\.(?:png|jpg|webp|mp4))))?$`).exec(value);
   if (!content) return null;
   return {kind: 'episode', workId: content[1], format: content[2], episodeId: content[3], resource: content[4] ?? null, asset: content[5] ?? null};
 }

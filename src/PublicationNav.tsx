@@ -26,6 +26,7 @@ function WorkNavigation({work, currentWorkId, currentFormat, currentEpisodeId}: 
 }) {
   return <section className="publication-work" aria-labelledby={`publication-work-${work.workId}`}>
     <a id={`publication-work-${work.workId}`} className={`publication-work-link${work.workId === currentWorkId ? ' is-current' : ''}`} href={workHref(work.workId)} aria-current={work.workId === currentWorkId ? 'page' : undefined}>{work.title}</a>
+    {work.novelUrl && <a className="publication-episode" href={work.novelUrl} rel="noreferrer">小説版を読む ↗</a>}
     {work.formats.map(format => <div className="publication-format" key={format.format}>
       <p className="publication-format-label">{formatLabel(format.format)}</p>
       <ol className="publication-episodes">

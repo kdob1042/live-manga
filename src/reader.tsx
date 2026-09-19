@@ -8,7 +8,6 @@ import {previewMatches} from '../contracts/preview.mjs';
 import PreviewEntry,{parsePreviewLocation} from './PreviewEntry';
 import ReaderSidebar from './ReaderSidebar';
 import WorkLibrary from './WorkLibrary';
-import NovelReader from './NovelReader';
 import {fetchPublicationCatalog, findEpisode, findWork, parseViewerRoute, type PublicationCatalog} from './publication-client';
 const panelLabel=(panel:Panel)=>panel.text||'画像のみのコマ';
 const placement=(r:Rect,p:Page)=>({left:`${r.x/p.width*100}%`,top:`${r.y/p.height*100}%`,width:`${r.width/p.width*100}%`,height:`${r.height/p.height*100}%`});
@@ -118,14 +117,13 @@ async function start() {
    const episode=findEpisode(catalog,route.workId,route.format,route.episodeId);
    if(!episode)throw Error('話が見つかりません');
    if(episode.locked)throw Error('この話は公開予定です');
-   if(route.format==='novel'){root.render(<NovelReader catalog={catalog} workId={route.workId} episode={episode}/>);return;}
    const base=`/works/${route.workId}/manga/${route.episodeId}/`;
    const response=await fetch(base+'manifest.json',{signal:AbortSignal.timeout(15000),cache:'no-cache'});if(!response.ok)throw Error('漫画を取得できません');
    const data=await response.text();if(data.length>4*1024*1024)throw Error('作品データが大きすぎます');const manifest=validate(JSON.parse(data)) as Manifest;
    if(manifest.workId!==route.workId||manifest.episodeId!==route.episodeId)throw Error('作品と話が一致しません');
    root.render(<Reader manifest={manifest} base={base} catalog={catalog} workId={route.workId} format="manga" episodeId={route.episodeId}/>);return;
   }
-  await loadLegacy();
+  throw Error('ページが見つかりません');
  } catch(error){root.render(<main role="alert"><h1>作品を開けませんでした</h1><p>{error instanceof Error ? error.message : String(error)}</p><a href="/">作品一覧へ戻る</a></main>);}
 }
 start();

@@ -43,16 +43,21 @@ test('catalog does not expose release ids and keeps format episode ranges indepe
   const response = await request('/catalog.json');
   assert.equal(response.status, 200);
   const value = await response.json();
-  assert.equal(value.works[0].formats.length, 2);
-  assert.equal(value.works[0].formats.find(item => item.format === 'novel').episodes.length, 2);
+  assert.equal(value.works[0].formats.length, 1);
   assert.equal('releaseId' in value.works[0].formats[0].episodes[0], false);
-  assert.equal(value.works[0].formats[1].episodes[1].locked, true);
 });
 
-test('episode route serves one novel body only after publication gate', async () => {
+test('old novel routes never serve bodies or the SPA', async () => {
   const response = await request(`/works/${manga.workId}/novel/novel-1/content.json`);
-  assert.equal(response.status, 200);
-  assert.equal((await response.json()).episodeId, 'novel-1');
+  assert.equal(response.status, 404);
   assert.equal((await request(`/works/${manga.workId}/novel/novel-locked/content.json`)).status, 404);
-  assert.equal((await request(`/works/${manga.workId}/novel/novel-1`)).status, 200);
+  assert.equal((await request(`/works/${manga.workId}/novel/novel-1`)).status, 404);
+});
+
+
+test('manga viewer and manifest remain available', async () => {
+  assert.equal((await request(`/works/${manga.workId}/manga/${manga.episodeId}`)).status, 200);
+  const response = await request(`/works/${manga.workId}/manga/${manga.episodeId}/manifest.json`);
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).releaseId, manga.releaseId);
 });
