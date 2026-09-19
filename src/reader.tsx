@@ -7,6 +7,9 @@ import type {Preview} from '../contracts/preview-types';
 import {previewMatches} from '../contracts/preview.mjs';
 import PreviewEntry,{parsePreviewLocation} from './PreviewEntry';
 import ReaderSidebar from './ReaderSidebar';
+import WorkLibrary from './WorkLibrary';
+import NovelReader from './NovelReader';
+import {fetchPublicationCatalog, findEpisode, findWork, parseViewerRoute, type PublicationCatalog} from './publication-client';
 const panelLabel=(panel:Panel)=>panel.text||'画像のみのコマ';
 const placement=(r:Rect,p:Page)=>({left:`${r.x/p.width*100}%`,top:`${r.y/p.height*100}%`,width:`${r.width/p.width*100}%`,height:`${r.height/p.height*100}%`});
 const relative=(r:Rect,box:Rect)=>({left:`${(r.x-box.x)/box.width*100}%`,top:`${(r.y-box.y)/box.height*100}%`,width:`${r.width/box.width*100}%`,height:`${r.height/box.height*100}%`});
@@ -21,7 +24,7 @@ const markerStyle=(_panel:Panel,_page:Page)=>({
  transform:'translateX(-50%)'
 });
 const LONG_PRESS_MS=450,MOVE_TOLERANCE=10;
-export function Reader({manifest,base,preview,onRefreshPreview,refreshing=false}:{manifest:Manifest;base:string;preview?:Preview;onRefreshPreview?:()=>void;refreshing?:boolean}) {
+export function Reader({manifest,base,preview,onRefreshPreview,refreshing=false,catalog,workId,format,episodeId}:{manifest:Manifest;base:string;preview?:Preview;onRefreshPreview?:()=>void;refreshing?:boolean;catalog?:PublicationCatalog;workId?:string;format?:'manga';episodeId?:string}) {
  const [selectedTags,setSelectedTags]=useState<string[]>([]),[tagMode,setTagMode]=useState<'any'|'all'>('any');
  const matched=preview?previewMatches(preview,selectedTags,tagMode):null;
  const visible: Set<string>=new Set<string>(matched?.pageIds??manifest.pages.map(p=>p.id));
@@ -73,7 +76,7 @@ export function Reader({manifest,base,preview,onRefreshPreview,refreshing=false}
  }
  function closeSidebar(){setSidebarOpen(false);requestAnimationFrame(()=>sidebarToggle.current?.focus());}
  return <div className={`reader-shell${sidebarOpen?' sidebar-open':''}`}>
-  <ReaderSidebar manifest={manifest} preview={preview} pages={manifest.pages} visiblePageIds={visible} selectedTags={selectedTags} tagMode={tagMode} open={sidebarOpen} refreshing={refreshing} onClose={closeSidebar} onTagsChange={(tags,mode)=>{stop();setSelectedTags(tags);setTagMode(mode);}} onRefresh={onRefreshPreview}/>
+  <ReaderSidebar manifest={manifest} preview={preview} pages={manifest.pages} visiblePageIds={visible} selectedTags={selectedTags} tagMode={tagMode} open={sidebarOpen} refreshing={refreshing} onClose={closeSidebar} onTagsChange={(tags,mode)=>{stop();setSelectedTags(tags);setTagMode(mode);}} onRefresh={onRefreshPreview} catalog={catalog} currentWorkId={workId} currentFormat={format} currentEpisodeId={episodeId}/>
   <button ref={sidebarToggle} className={`sidebar-toggle${sidebarOpen?' is-open':''}`} type="button" aria-expanded={sidebarOpen} aria-controls="reader-sidebar" aria-label={sidebarOpen?'読書メニューを閉じる':'読書メニューを開く'} onClick={()=>setSidebarOpen(value=>!value)}><span aria-hidden="true">{sidebarOpen?'›':'‹'}</span></button>
   <main className="reader-main">
    <div className="reader-status" role="status" aria-live="polite">{status}</div>
@@ -93,16 +96,37 @@ export function Reader({manifest,base,preview,onRefreshPreview,refreshing=false}
 }
 async function start() {
  const root=createRoot(document.getElementById('root')!);
- try {
-  const scope=parsePreviewLocation(location.href);
-  if(scope){root.render(<PreviewEntry scope={scope} render={(preview,base,onRefresh,refreshing)=><Reader key={base} manifest={preview.manifest} base={base} preview={preview} onRefreshPreview={onRefresh} refreshing={refreshing}/>}/>);return;}
+ const loadLegacy=async()=>{
   let release=new URL(location.href).searchParams.get('release');
-  if(!release){const catalog=await fetch('/catalog.json',{signal:AbortSignal.timeout(15000),cache:'no-cache'});if(catalog.ok){const text=await catalog.text();if(text.length>1024)throw Error('公開一覧が不正です');release=JSON.parse(text).current;}else if(catalog.status!==404)throw Error('公開一覧を取得できません');}
+  if(!release){const catalog=await fetch('/catalog.json',{signal:AbortSignal.timeout(15000),cache:'no-cache'});if(catalog.ok){const text=await catalog.text();if(text.length>1024)throw Error('公開一覧が不正です');const value=JSON.parse(text);release=typeof value.current==='string'?value.current:null;}else if(catalog.status!==404)throw Error('公開一覧を取得できません');}
   if(release&&!/^[a-zA-Z0-9:_-]{1,128}$/.test(release))throw Error('刊行版の指定が不正です');
   const base=release?`/releases/${release}/`:'/demo/';
   const response=await fetch(base+'live-manga.json',{signal:AbortSignal.timeout(15000)});if(!response.ok)throw Error('作品を取得できません');
   const data=await response.text();if(data.length>4*1024*1024)throw Error('作品データが大きすぎます');const manifest=validate(JSON.parse(data)) as Manifest;
   if(release&&manifest.releaseId!==release)throw Error('刊行版が一致しません');root.render(<Reader manifest={manifest} base={base}/>);
- } catch(error){root.render(<main role="alert"><h1>作品を開けませんでした</h1><p>{error instanceof Error ? error.message : String(error)}</p><a href="/">サンプルを読む</a></main>);}
+ };
+ try {
+  const scope=parsePreviewLocation(location.href);
+  if(scope){root.render(<PreviewEntry scope={scope} render={(preview,base,onRefresh,refreshing)=><Reader key={base} manifest={preview.manifest} base={base} preview={preview} onRefreshPreview={onRefresh} refreshing={refreshing}/>}/>);return;}
+  const route=parseViewerRoute(location.pathname);
+  if(route.kind==='library'&&new URL(location.href).searchParams.has('release')){await loadLegacy();return;}
+  if(route.kind==='library'||route.kind==='work'||route.kind==='episode'){
+   let catalog:PublicationCatalog;
+   try{catalog=await fetchPublicationCatalog();}catch(error){if(route.kind==='library'){await loadLegacy();return;}throw error;}
+   if(route.kind==='library'){root.render(<WorkLibrary catalog={catalog}/>);return;}
+   if(route.kind==='work'){if(!findWork(catalog,route.workId))throw Error('作品が見つかりません');root.render(<WorkLibrary catalog={catalog} focusWorkId={route.workId}/>);return;}
+   const episode=findEpisode(catalog,route.workId,route.format,route.episodeId);
+   if(!episode)throw Error('話が見つかりません');
+   if(episode.locked)throw Error('この話は公開予定です');
+   if(route.format==='novel'){root.render(<NovelReader catalog={catalog} workId={route.workId} episode={episode}/>);return;}
+   const base=`/works/${route.workId}/manga/${route.episodeId}/`;
+   const response=await fetch(base+'manifest.json',{signal:AbortSignal.timeout(15000),cache:'no-cache'});if(!response.ok)throw Error('漫画を取得できません');
+   const data=await response.text();if(data.length>4*1024*1024)throw Error('作品データが大きすぎます');const manifest=validate(JSON.parse(data)) as Manifest;
+   if(manifest.workId!==route.workId||manifest.episodeId!==route.episodeId)throw Error('作品と話が一致しません');
+   root.render(<Reader manifest={manifest} base={base} catalog={catalog} workId={route.workId} format="manga" episodeId={route.episodeId}/>);return;
+  }
+  await loadLegacy();
+ } catch(error){root.render(<main role="alert"><h1>作品を開けませんでした</h1><p>{error instanceof Error ? error.message : String(error)}</p><a href="/">作品一覧へ戻る</a></main>);}
 }
 start();
+
