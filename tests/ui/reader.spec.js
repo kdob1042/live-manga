@@ -73,8 +73,8 @@ test('outside panel taps stop the active video while the marker stays at the top
  expect(markerBox.width).toBeGreaterThanOrEqual(14);
  expect(markerBox.height).toBeGreaterThanOrEqual(2);
  expect(Math.abs(markerCenter-motionCenter)).toBeLessThan(2);
- expect(markerBox.y).toBeGreaterThan(motionBox.y+motionBox.height-8);
- expect(markerBox.y).toBeLessThan(motionBox.y+motionBox.height+8);
+ expect(markerBox.y).toBeGreaterThan(motionBox.y-2);
+ expect(markerBox.y).toBeLessThan(motionBox.y+8);
  await page.locator('.sidebar-toggle').click();
  await expect(page.locator('video')).toHaveCount(0);
 });
