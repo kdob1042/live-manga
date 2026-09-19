@@ -9,13 +9,13 @@ FALLBACK_OUT = Path(sys.argv[2])
 BASE_PATH = Path(sys.argv[3])
 ART_OUT = Path(sys.argv[4])
 
-W, H = 800, 1120
+W, H = 748, 1010
 FRAMES = [
-    (26, 26, 470, 470),
-    (496, 26, 278, 470),
-    (26, 496, 240, 240),
-    (266, 496, 508, 240),
-    (26, 736, 748, 300),
+    (0, 0, 470, 470),
+    (470, 0, 278, 470),
+    (0, 470, 240, 240),
+    (240, 470, 508, 240),
+    (0, 710, 748, 300),
 ]
 
 
@@ -76,14 +76,14 @@ for frame, fill in zip(FRAMES, fills):
 
 # Panel 1: a large abstract profile and hair/speed lines.
 tone(base, FRAMES[0], 22, (68, 76, 80))
-base.ellipse((130, 130, 355, 350), outline="#172126", width=6)
-for a, b in [((145, 155), (85, 90)), ((170, 130), (120, 55)), ((208, 128), (185, 45)), ((255, 135), (270, 50)), ((300, 160), (355, 80))]:
+base.ellipse((104, 104, 329, 324), outline="#172126", width=6)
+for a, b in [((119, 129), (59, 64)), ((144, 104), (94, 29)), ((182, 102), (159, 19)), ((229, 109), (244, 24)), ((274, 134), (329, 54))]:
     stroke(base, [a, b], 6, "#172126")
-base.ellipse((205, 220, 218, 235), fill="#172126")
-base.arc((218, 218, 280, 280), 15, 150, fill="#172126", width=5)
-stroke(base, [(175, 350), (115, 470)], 8)
-stroke(base, [(300, 350), (395, 470)], 8)
-stroke(base, [(70, 410), (180, 385), (310, 400), (430, 375)], 3, "#566268")
+base.ellipse((179, 194, 192, 209), fill="#172126")
+base.arc((192, 192, 254, 254), 15, 150, fill="#172126", width=5)
+stroke(base, [(149, 324), (89, 444)], 8)
+stroke(base, [(274, 324), (369, 444)], 8)
+stroke(base, [(44, 384), (154, 359), (284, 374), (404, 349)], 3, "#566268")
 
 # Panel 2: a tall moving object/hand motif that fills the taller frame.
 px, py, _, _ = FRAMES[1]
@@ -131,12 +131,12 @@ for frame in FRAMES:
     panel_border(over, frame)
 
 # Dialogue and narration remain in distinct, in-panel positions.
-bubble(over, (285, 55, 180, 95), (285, 190), "WAIT...", BOLD_FONT)
-bubble(over, (526, 48, 190, 78), (610, 160), "...", BOLD_FONT)
-narration(over, (48, 529, 150, 54), "A quiet turn.")
-narration(over, (394, 656, 285, 56), "THE MOMENT PAUSES.")
-narration(over, (70, 776, 295, 56), "The room held its breath.")
-center_text(over, (600, 235, 135, 40), "· · ·", BOLD_FONT)
+bubble(over, (259, 29, 180, 95), (259, 164), "WAIT...", BOLD_FONT)
+bubble(over, (500, 22, 190, 78), (584, 134), "...", BOLD_FONT)
+narration(over, (22, 503, 150, 54), "A quiet turn.")
+narration(over, (368, 630, 285, 56), "THE MOMENT PAUSES.")
+narration(over, (44, 750, 295, 56), "The room held its breath.")
+center_text(over, (574, 209, 135, 40), "· · ·", BOLD_FONT)
 
 art.save(ART_OUT)
 overlay.save(OVERLAY_OUT)
