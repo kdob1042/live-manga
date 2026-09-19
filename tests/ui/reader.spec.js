@@ -61,7 +61,7 @@ test('short tap loads one video; natural end returns to poster without layout ch
  await expect(page.getByText('静かな午後。',{exact:true})).toBeVisible();
 });
 
-test('outside panel taps stop the active video while the marker stays in the gutter',async({page})=>{
+test('outside panel taps stop the active video while the marker stays at the top edge',async({page})=>{
  await page.goto('/');
  const hit=motionHit(page).first();
  await hit.click();
@@ -73,8 +73,8 @@ test('outside panel taps stop the active video while the marker stays in the gut
  expect(markerBox.width).toBeGreaterThanOrEqual(14);
  expect(markerBox.height).toBeGreaterThanOrEqual(2);
  expect(Math.abs(markerCenter-motionCenter)).toBeLessThan(2);
- expect(markerBox.y).toBeGreaterThan(motionBox.y+motionBox.height-8);
- expect(markerBox.y).toBeLessThan(motionBox.y+motionBox.height+8);
+ expect(markerBox.y).toBeGreaterThan(motionBox.y-2);
+ expect(markerBox.y).toBeLessThan(motionBox.y+8);
  await page.locator('.sidebar-toggle').click();
  await expect(page.locator('video')).toHaveCount(0);
 });
