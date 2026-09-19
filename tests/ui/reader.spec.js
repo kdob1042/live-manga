@@ -61,7 +61,7 @@ test('short tap loads one video; natural end returns to poster without layout ch
  await expect(page.getByText('静かな午後。',{exact:true})).toBeVisible();
 });
 
-test('outside panel taps stop the active video while the marker stays in the gutter',async({page})=>{
+test('outside panel taps stop the active video while the marker stays at the top edge',async({page})=>{
  await page.goto('/');
  const hit=motionHit(page).first();
  await hit.click();
