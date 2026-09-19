@@ -1,4 +1,4 @@
-export type PublicationFormat = 'novel' | 'manga';
+export type PublicationFormat = 'manga';
 
 export type PublicationEpisode = {
   episodeId: string;
@@ -19,6 +19,7 @@ export type PublicationWork = {
   workId: string;
   title: string;
   description: string;
+  novelUrl?: string;
   formats: PublicationFormatEntry[];
 };
 
@@ -41,7 +42,7 @@ export function parseViewerRoute(pathname: string): ViewerRoute {
   if (value === '/') return {kind: 'library'};
   const work = new RegExp(`^/works/(${ID})$`).exec(value);
   if (work) return {kind: 'work', workId: work[1]};
-  const episode = new RegExp(`^/works/(${ID})/(novel|manga)/(${ID})$`).exec(value);
+  const episode = new RegExp(`^/works/(${ID})/(manga)/(${ID})$`).exec(value);
   if (episode) return {kind: 'episode', workId: episode[1], format: episode[2] as PublicationFormat, episodeId: episode[3]};
   return {kind: 'unknown'};
 }
@@ -82,5 +83,5 @@ export function findEpisode(catalog: PublicationCatalog, workId: string, format:
 }
 
 export function formatLabel(format: PublicationFormat) {
-  return format === 'novel' ? '小説' : '漫画';
+  return format === 'manga' ? '漫画' : '';
 }

@@ -65,20 +65,6 @@ async function readMangaManifest(env, entry) {
   }
 }
 
-async function serveNovelContent(request, env, entry) {
-  const object = await env.MEDIA.get(`releases/${entry.releaseId}/novel.json`);
-  if (!object || object.size > 4 * 1024 * 1024) return new Response(null, {status: 404});
-  try {
-    const content = await object.json();
-    if (content.format !== 'novel' || content.workId !== entry.workId || content.episodeId !== entry.episodeId || typeof content.title !== 'string' || content.title.length > 512 || typeof content.html !== 'string' || content.html.length > 3 * 1024 * 1024) {
-      return new Response(null, {status: 502});
-    }
-    return json(content, 200, 'no-cache');
-  } catch {
-    return new Response(null, {status: 502});
-  }
-}
-
 async function serveR2Asset(request, env, key, asset, cache = 'public, max-age=3600') {
   const head = await env.MEDIA.head(key);
   if (!head || asset && head.size !== asset.bytes) return new Response(null, {status: 404});
@@ -110,10 +96,6 @@ async function serveR2Asset(request, env, key, asset, cache = 'public, max-age=3
 }
 
 async function servePublicationEpisode(request, env, route, entry) {
-  if (route.format === 'novel') {
-    if (route.resource !== 'content.json') return new Response(null, {status: 404});
-    return serveNovelContent(request, env, entry);
-  }
   const loaded = await readMangaManifest(env, entry);
   if (!loaded) return new Response(null, {status: 502});
   if (route.resource === 'manifest.json') return json(loaded.manifest, 200, 'no-cache');
@@ -184,7 +166,7 @@ export default {async fetch(request, env) {
   }
   const route = parsePublicationRoute(url.pathname);
   if (route && publication.catalog) return servePublication(request, env, publication, route);
-  if (route) return new Response(null, {status: 404});
+  if (route || url.pathname.startsWith('/works/')) return new Response(null, {status: 404});
   if (!url.pathname.startsWith('/releases/')) return env.ASSETS.fetch(request);
   const match = RELEASE_PATH.exec(url.pathname);
   if (!match || !env.MEDIA) return new Response(null, {status: 404});

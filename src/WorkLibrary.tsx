@@ -9,7 +9,7 @@ export default function WorkLibrary({catalog, focusWorkId}: {catalog: Publicatio
     <div className="library-frame">
       <p className="library-kicker">WORKS / CATALOG</p>
       <h1>{focusWorkId && works.length ? works[0].title : '作品一覧'}</h1>
-      <p className="library-lede">小説と漫画は、作品ごと・版ごとに独立した公開範囲で読めます。</p>
+      <p className="library-lede">公開中の漫画を選んでお読みいただけます。</p>
       {focusWorkId && <p><a href="/" className="library-back">← 作品一覧へ戻る</a></p>}
       {works.length ? <div className="library-grid">{works.map(work => <article className="library-card" key={work.workId}>
         <h2><a href={`/works/${encodeURIComponent(work.workId)}/`}>{work.title}</a></h2>
