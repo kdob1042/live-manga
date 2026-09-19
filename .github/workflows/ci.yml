@@ -2,8 +2,20 @@ name: Live Manga CI
 on:
   pull_request:
     branches: [dev, main]
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
   push:
     branches: [dev, main]
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+
+concurrency:
+  # A newer commit for the same PR or target branch supersedes the older validation.
+  group: live-manga-${{ github.event.pull_request.number || github.ref_name }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 jobs:
