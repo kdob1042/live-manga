@@ -12,6 +12,7 @@
 
 - production: main → `live-manga` → 既存の非公開 `live-manga-media-prod` → `publication/catalog.json`
 - dev: dev → `live-manga-dev` → 別途作成する非公開 `live-manga-media-dev` → `publication/catalog.dev.json`
+- devのpreview uploadは必ず `wrangler.dev.jsonc` を明示し、productionのR2 binding・catalog keyへ誤送信しない。
 - 両環境とも `/works/*` と `/catalog.json` を `run_worker_first` に含める。これを外すと静的AssetがWorkerの公開ゲートを迂回する。
 - devは `DEV_AUTH_REQUIRED=true` のままにし、Cloudflare Accessもdev WorkerのURLに別途関連付ける。
 - productionの `REQUIRE_PUBLICATION_CATALOG` は、検証済みのproduction catalogを配置するまで `false` のままにできる。切替手順ではcatalogの内容・R2 prefix・URL直アクセスを確認した後に `true` へ変更する。`true` にした後は、catalogが無い場合も旧legacy経路へフォールバックしない。
@@ -26,7 +27,7 @@ Cloudflare Dashboardの対象Workerで、`Settings > Build > Branch control`を�
 
 - Git branch（production branch）: `main`
 - Builds for non-production branches: 有効
-- Non-production branch deploy command: `npx wrangler versions upload`
+- Non-production branch deploy command: `npx wrangler versions upload --config wrangler.dev.jsonc`
 
 これにより、`dev`へpushするたびにCloudflareがPreview versionを作成する。Cloudflareのこの設定は全非本番ブランチが対象なので、作業ブランチにも一時Previewが生成されるが、継続的に確認する基準URLは`dev`の最新ビルドとする。`main`へのpushだけが本番`npx wrangler deploy`を実行する。
 
