@@ -11,13 +11,13 @@ const panelLabel=(panel:Panel)=>panel.text||'画像のみのコマ';
 const placement=(r:Rect,p:Page)=>({left:`${r.x/p.width*100}%`,top:`${r.y/p.height*100}%`,width:`${r.width/p.width*100}%`,height:`${r.height/p.height*100}%`});
 const relative=(r:Rect,box:Rect)=>({left:`${(r.x-box.x)/box.width*100}%`,top:`${(r.y-box.y)/box.height*100}%`,width:`${r.width/box.width*100}%`,height:`${r.height/box.height*100}%`});
 const clipStyle=(panel:Panel,box=panel.frame)=>panel.clip?{clipPath:`polygon(${panel.clip.map(([x,y])=>`${(x-box.x)/box.width*100}% ${(y-box.y)/box.height*100}%`).join(',')})`}:{};
-const surfaceRect=(panel:Panel)=>panel.clip?panel.frame:panel.artRect;
-const actionRect=(panel:Panel)=>panel.clip?panel.frame:panel.artRect;
+const surfaceRect=(panel:Panel)=>panel.motion?panel.frame:panel.artRect;
+const actionRect=(panel:Panel)=>panel.motion?panel.frame:panel.artRect;
 const hitAreaStyle=(panel:Panel)=>panel.clip?{...relative(panel.artRect,panel.frame),right:'auto',bottom:'auto',...clipStyle(panel,panel.artRect)}:{};
 const markerStyle=(_panel:Panel,_page:Page)=>({
  position:'absolute' as const,
  left:'50%',
- bottom:'-5px',
+ top:'6px',
  transform:'translateX(-50%)'
 });
 const LONG_PRESS_MS=450,MOVE_TOLERANCE=10;
