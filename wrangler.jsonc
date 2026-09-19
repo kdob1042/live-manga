@@ -5,10 +5,17 @@
   // Keep workers.dev enabled: Cloudflare Access limits this publication URL.
   // Setting this to false disables the route on the next redeploy.
   "workers_dev": true,
+  "vars": {
+    "ENVIRONMENT": "production",
+    "PUBLICATION_CATALOG_KEY": "publication/catalog.json",
+    // Keep the legacy catalog fallback until the publication catalog is installed.
+    // Set this to "true" as part of the controlled production cutover.
+    "REQUIRE_PUBLICATION_CATALOG": "false"
+  },
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",
-    "run_worker_first": ["/releases/*", "/catalog.json"]
+    "run_worker_first": ["/releases/*", "/works/*", "/catalog.json"]
   },
   "r2_buckets": [
     {
