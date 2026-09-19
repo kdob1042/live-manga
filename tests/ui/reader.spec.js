@@ -133,6 +133,43 @@ test('late play resolution is ignored after another panel starts',async({page})=
  await expect.poll(()=>page.locator('video').evaluate(v=>v.currentTime)).toBeGreaterThan(0);
 });
 
+test('v2 cover motion is clipped in-panel but expanded video shows the full uncropped frame',async({page})=>{
+ await page.route('**/live-manga.json',async route=>{
+  const response=await route.fetch(),m=await response.json();m.schemaVersion='2.0.0';
+  for(const panel of m.pages[0].panels){
+   const {x,y,width:w,height:h}=panel.frame;
+   panel.clip=[[x,y],[x+w,y],[x+w,y+h],[x,y+h]];
+   if(panel.motion){
+    const inset=Math.min(w,h)*.12;
+    panel.clip=[[x+inset,y],[x+w,y+inset],[x+w-inset,y+h],[x,y+h-inset]];
+    const poster=m.assets.find(a=>a.id===panel.poster),ratio=poster.width/poster.height;
+    let width=w,height=width/ratio;if(height<h){height=h;width=height*ratio;}
+    panel.artRect={x:x+(w-width)/2,y:y+(h-height)/2,width,height};
+   }
+  }
+  await route.fulfill({json:m});
+ });
+ await page.goto('/');
+ const motion=page.locator('.motion').first(),media=motion.locator('.motion-media'),hit=motionHit(page).first();
+ await expect(motion).toHaveClass(/motion-clip/);
+ expect(await motion.evaluate(el=>getComputedStyle(el).clipPath)).toMatch(/^polygon\(/);
+ const motionBox=await motion.boundingBox(),mediaBox=await media.boundingBox();
+ if(!motionBox||!mediaBox)throw new Error('Expected v2 motion geometry');
+ expect(mediaBox.width>motionBox.width||mediaBox.height>motionBox.height).toBe(true);
+ await hit.click();
+ await expect(motion.locator('video')).toBeVisible();
+ await hit.click();
+ const dialog=page.getByRole('dialog',{name:/拡大動画/}),modal=dialog.locator('.modal-motion'),modalMedia=dialog.locator('.modal-media'),video=dialog.locator('video');
+ await expect(dialog).toBeVisible();
+ await expect(modal).not.toHaveClass(/cropped/);
+ expect(await modal.evaluate(el=>getComputedStyle(el).clipPath)).toBe('none');
+ expect(await modalMedia.evaluate(el=>getComputedStyle(el).clipPath)).toBe('none');
+ expect(await video.evaluate(el=>getComputedStyle(el).objectFit)).toBe('contain');
+ await expect(video).toHaveAttribute('controls','');
+ await page.getByRole('button',{name:'拡大動画を閉じる'}).click();
+ await expect(hit).toBeFocused();
+});
+
 test('PC second click opens one large modal video and restores focus on close',async({page})=>{
  await page.goto('/');
  const hit=motionHit(page).first();
