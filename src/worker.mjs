@@ -70,7 +70,7 @@ async function serveNovelContent(request, env, entry) {
   if (!object || object.size > 4 * 1024 * 1024) return new Response(null, {status: 404});
   try {
     const content = await object.json();
-    if (content.format !== 'novel' || content.workId !== entry.workId || content.episodeId !== entry.episodeId || typeof content.html !== 'string') {
+    if (content.format !== 'novel' || content.workId !== entry.workId || content.episodeId !== entry.episodeId || typeof content.title !== 'string' || content.title.length > 512 || typeof content.html !== 'string' || content.html.length > 3 * 1024 * 1024) {
       return new Response(null, {status: 502});
     }
     return json(content, 200, 'no-cache');
