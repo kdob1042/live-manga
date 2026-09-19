@@ -222,7 +222,7 @@ test('failed overlay falls back to the completed page and removes its motion hit
  await page.reload();
  await expect(page.locator('.overlay')).toHaveCount(0);
  await expect(page.locator('.panel-hit-area')).toHaveCount(0);
- await expect.poll(()=>page.locator('.page img').evaluate(im=>im.complete&&im.naturalWidth>0)).toBe(true);
+ await expect.poll(()=>page.locator('.page img:not(.overlay)').first().evaluate(im=>im.complete&&im.naturalWidth>0)).toBe(true);
  await page.unroute('**'+overlay);
  await page.reload();
  await motionHit(page).first().click();
