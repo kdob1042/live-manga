@@ -2,6 +2,8 @@ import React from 'react';
 import type {Manifest, Page} from '../contracts/types';
 import type {Preview} from '../contracts/preview-types';
 import PreviewControls from './PreviewControls';
+import PublicationNav from './PublicationNav';
+import type {PublicationCatalog, PublicationFormat} from './publication-client';
 
 type Props = {
   manifest: Manifest;
@@ -15,6 +17,10 @@ type Props = {
   onClose: () => void;
   onTagsChange: (tags: string[], mode: 'any'|'all') => void;
   onRefresh?: () => void;
+  catalog?: PublicationCatalog;
+  currentWorkId?: string;
+  currentFormat?: PublicationFormat;
+  currentEpisodeId?: string;
 };
 
 const pageLabel = (page: Page, index: number) => `${String(index + 1).padStart(2, '0')}ページ`;
@@ -34,7 +40,7 @@ function pageNotes(preview: Preview, page: Page) {
 
 export default function ReaderSidebar({
   manifest, preview, pages, visiblePageIds, selectedTags, tagMode, open,
-  refreshing, onClose, onTagsChange, onRefresh,
+  refreshing, onClose, onTagsChange, onRefresh, catalog, currentWorkId, currentFormat, currentEpisodeId,
 }: Props) {
   const tocPages = pages
     .map((page, index) => ({page, index}))
@@ -57,12 +63,12 @@ export default function ReaderSidebar({
         <section className="sidebar-work-section" aria-labelledby="reader-work-heading">
           <h1 className="sidebar-title">{manifest.title}</h1>
           <p id="reader-work-heading" className="sidebar-section-label">作品</p>
-          <nav className="work-list" aria-label="作品一覧">
+          {catalog ? <PublicationNav catalog={catalog} currentWorkId={currentWorkId} currentFormat={currentFormat} currentEpisodeId={currentEpisodeId} compact/> : <nav className="work-list" aria-label="作品一覧">
             <a className="work-option" href={workHref} aria-current="page">
             <span className="work-option-mark" aria-hidden="true">●</span>
             <span><strong>{manifest.title}</strong><small>{preview ? '制作途中プレビュー' : `第${manifest.episodeId}話 · ${manifest.releaseId}`}</small></span>
             </a>
-          </nav>
+          </nav>}
           {preview && <div className="preview-summary"><span>保存時点 {new Date(preview.savedAt).toLocaleString('ja-JP')}</span>{onRefresh && <button type="button" onClick={onRefresh} disabled={refreshing}>{refreshing ? '確認中…' : '最新版を開く'}</button>}</div>}
           <a className="sidebar-home-link" href={currentHref.includes('?preview=') ? '/' : '#reader-sidebar'} onClick={event => { if (!currentHref.includes('?preview=')) { event.preventDefault(); onClose(); } }}>作品トップ</a>
         </section>
@@ -103,3 +109,4 @@ export default function ReaderSidebar({
     </aside>
   </>;
 }
+
