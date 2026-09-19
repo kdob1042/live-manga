@@ -43,7 +43,7 @@ for(const [index,panelId] of [[0,'s:p0'],[0,'s:p1'],[1,'s:p4']])test(`unaltered 
  await expect(page.locator('video')).toHaveCount(0,{timeout:10000});
  expect(await surface.screenshot()).toEqual(before);
 });
-test('slanted crop clips pointer hits; enlarged playback keeps the same transform',async({page})=>{
+test('slanted crop clips pointer hits; enlarged playback shows the full uncropped video',async({page})=>{
  const surface=page.locator('.page').first(),box=await surface.boundingBox();
  const manifest=await (await page.request.get(`/releases/${release}/live-manga.json`)).json(),pg=manifest.pages[0],p=pg.panels[0];
  const scale=box.width/pg.width;
@@ -57,11 +57,13 @@ test('slanted crop clips pointer hits; enlarged playback keeps the same transfor
  const x=targetBox.x+targetBox.width/2,y=targetBox.y+targetBox.height/2;
  const point={pointerType:'touch',button:0,clientX:x,clientY:y};
  await target.dispatchEvent('pointerdown',point);await page.waitForTimeout(500);await target.dispatchEvent('pointerup',point);
- await expect(page.getByRole('dialog')).toBeVisible();await expect.poll(()=>page.locator('video').evaluate(v=>v.currentTime)).toBeGreaterThan(0);
- const clip=page.locator('.modal-motion.cropped'),cb=await clip.boundingBox(),vb=await page.locator('video').boundingBox();
- expect(await clip.evaluate(e=>getComputedStyle(e).clipPath)).toContain('polygon(');
- expect((vb.x-cb.x)/cb.width).toBeCloseTo((p.artRect.x-p.frame.x)/p.frame.width,3);
- expect(vb.width/cb.width).toBeCloseTo(p.artRect.width/p.frame.width,3);
+ const dialog=page.getByRole('dialog'),modal=dialog.locator('.modal-motion'),host=dialog.locator('.modal-media'),video=dialog.locator('video');
+ await expect(dialog).toBeVisible();await expect.poll(()=>video.evaluate(v=>v.currentTime)).toBeGreaterThan(0);
+ await expect(modal).not.toHaveClass(/cropped/);
+ expect(await modal.evaluate(e=>getComputedStyle(e).clipPath)).toBe('none');
+ expect(await host.evaluate(e=>getComputedStyle(e).clipPath)).toBe('none');
+ expect(await video.evaluate(e=>getComputedStyle(e).objectFit)).toBe('contain');
+ await expect(video).toHaveAttribute('controls','');
  await page.keyboard.press('Escape');await expect(page.locator('video')).toHaveCount(0);await expect(target).toBeFocused();
 });
 

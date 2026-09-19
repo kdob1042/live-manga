@@ -91,7 +91,7 @@ export function Reader({manifest,base,preview,onRefreshPreview,refreshing=false,
     </div>
    </section>)}
   </main>
-  <dialog ref={dialog} className="video-dialog" aria-label={modalPanel?`${panelLabel(modalPanel)}の拡大動画`:'拡大動画'} onCancel={e=>{e.preventDefault();stop();}} onClick={e=>{if(e.target===e.currentTarget)stop();}}><div className="video-dialog-shell"><div className="video-dialog-head"><p>{modalPanel?panelLabel(modalPanel):''}</p><button className="dialog-close" aria-label="拡大動画を閉じる" onClick={()=>stop()}>×</button></div><div className={`modal-motion ${modalPanel?.clip?'cropped':''}`} style={modalPanel?.clip?{...clipStyle(modalPanel),aspectRatio:`${modalPanel.frame.width}/${modalPanel.frame.height}`,width:`min(100%, calc((94dvh - 58px) * ${modalPanel.frame.width/modalPanel.frame.height}))`}:undefined}><div ref={modalHost} className={modalPanel?.clip?'motion-media':'modal-media'} style={modalPanel?.clip?relative(modalPanel.artRect,modalPanel.frame):undefined}/></div></div></dialog>
+  <dialog ref={dialog} className="video-dialog" aria-label={modalPanel?`${panelLabel(modalPanel)}の拡大動画`:'拡大動画'} onCancel={e=>{e.preventDefault();stop();}} onClick={e=>{if(e.target===e.currentTarget)stop();}}><div className="video-dialog-shell"><div className="video-dialog-head"><p>{modalPanel?panelLabel(modalPanel):''}</p><button className="dialog-close" aria-label="拡大動画を閉じる" onClick={()=>stop()}>×</button></div><div className="modal-motion"><div ref={modalHost} className="modal-media"/></div></div></dialog>
  </div>;
 }
 async function start() {
