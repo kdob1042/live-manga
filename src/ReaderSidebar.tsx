@@ -13,8 +13,10 @@ type Props = {
   selectedTags: string[];
   tagMode: 'any'|'all';
   open: boolean;
+  hideOverlayDuringMotion: boolean;
   refreshing?: boolean;
   onClose: () => void;
+  onHideOverlayDuringMotionChange: (value: boolean) => void;
   onTagsChange: (tags: string[], mode: 'any'|'all') => void;
   onRefresh?: () => void;
   catalog?: PublicationCatalog;
@@ -40,7 +42,8 @@ function pageNotes(preview: Preview, page: Page) {
 
 export default function ReaderSidebar({
   manifest, preview, pages, visiblePageIds, selectedTags, tagMode, open,
-  refreshing, onClose, onTagsChange, onRefresh, catalog, currentWorkId, currentFormat, currentEpisodeId,
+  hideOverlayDuringMotion, refreshing, onClose, onHideOverlayDuringMotionChange, onTagsChange, onRefresh,
+  catalog, currentWorkId, currentFormat, currentEpisodeId,
 }: Props) {
   const tocPages = pages
     .map((page, index) => ({page, index}))
@@ -101,6 +104,18 @@ export default function ReaderSidebar({
             {!textPages.length && <p className="sidebar-empty">本文はありません。</p>}
           </details>
         </section>
+        <section className="sidebar-settings-section" aria-labelledby="reader-settings-heading">
+          <p id="reader-settings-heading" className="sidebar-section-label">読書設定</p>
+          <label className="reader-setting-toggle">
+            <input
+              type="checkbox"
+              checked={hideOverlayDuringMotion}
+              onChange={event => onHideOverlayDuringMotionChange(event.target.checked)}
+            />
+            <span>動画再生中はコマ内の吹き出し・文字を隠す</span>
+          </label>
+          <p className="reader-setting-help">再生中のコマだけに適用します。停止すると元に戻ります。</p>
+        </section>
         {preview && <section className="sidebar-tags-section" aria-labelledby="reader-tags-heading">
           <p id="reader-tags-heading" className="sidebar-section-label">タグで絞り込む</p>
           <PreviewControls preview={preview} selected={selectedTags} mode={tagMode} count={visiblePageIds.size} onChange={onTagsChange}/>
@@ -109,4 +124,3 @@ export default function ReaderSidebar({
     </aside>
   </>;
 }
-

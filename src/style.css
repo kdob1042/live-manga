@@ -101,3 +101,10 @@ a.publication-episode:hover,a.publication-episode.is-current{background:#f4f7f2}
 .modal-time{flex:none;color:#fff;white-space:nowrap;font-size:11px;font-variant-numeric:tabular-nums;text-shadow:0 1px 4px #000}
 .modal-mute{white-space:nowrap}
 @media(max-width:759px){.modal-controls{gap:8px;padding-top:12px}.modal-time{font-size:10px}.modal-controls button{min-width:38px;padding:0 8px}}
+
+/* Draw only the playing panel above lettering, retaining its existing clip. */
+.motion.motion-above-overlay{z-index:4}
+.panel-actions{z-index:5}
+.reader-setting-toggle{display:flex;align-items:flex-start;gap:8px;color:#28484c;font-size:13px;line-height:1.4;cursor:pointer}
+.reader-setting-toggle input{flex:none;margin:2px 0 0;accent-color:#285357}
+.reader-setting-help{margin:8px 0 0;color:#6f7e80;font-size:11px;line-height:1.6}

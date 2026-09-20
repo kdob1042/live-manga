@@ -6,7 +6,7 @@
 
 `live-manga.json` と `assets/<SHA256>.<ext>` の自己完結フォルダ。配列順が読書順。versionは形式、releaseIdは不変の刊行版。内部原作commit・Job・秘密は公開manifestに載せない。
 
-ページは基準width/heightと art（作画背景）、overlay（透明PNGの文字・枠）、fallback（完成静止画）を持つ。panelはframe、contain後のartRect、poster、公開text、任意motionを持つ。動画はartRectを置換し文字の下で再生。end=posterのみ。再生や次コマへの自動遷移なし。ここまでは矩形v1の規則。自由コマ形状は後述のv2で扱う。
+ページは基準width/heightと art（作画背景）、overlay（透明PNGの文字・枠）、fallback（完成静止画）を持つ。panelはframe、contain後のartRect、poster、公開text、任意motionを持つ。動画はartRectを置換し文字の下で再生。end=posterのみ。再生や次コマへの自動遷移なし。Viewerの既定表示では再生中のコマ動画をoverlayより前に表示し、そのコマ内の文字を隠す。読書メニューで無効化できる。停止・終了・失敗時は元の表示へ戻す。他のコマやページのoverlayは維持する。この設定は公開manifestを変更しない。ここまでは矩形v1の規則。自由コマ形状は後述のv2で扱う。
 
 画像PNG/JPEG/WebP、動画MP4/H.264・無音・30秒以内。初期fixtureは5秒。初回の静止画と生成動画の先頭画素の一致は保証しない。開始画像のID/hash・identity変換・原文範囲は制作側で照合する。
 
@@ -22,7 +22,7 @@ v1の読込を維持し、新規出力は2.0.0へ移行する。ページ内の�
 
 v2 panelは従来のフィールドに`clip`を必須追加する。`clip`はページのピクセル座標による時計回りの凸四角形（4組の`[x,y]`）。`frame`はその正確な外接矩形。`artRect`は元poster全体を一様拡大・平行移動した描画先で、cropでは負座標やページ外を許す。回転・歪曲は扱わない。幅・高さはposterと同じ比率、ページの長辺の65536倍以下とする。
 
-ページ上の通常のホームコマ内表示・コマ内動画クリップ・クリック可能領域はすべて`clip ∩ artRect`とする。v2ではartRectがframeを覆うcover（crop）か、四隅がclip内にあるcontainのいずれかを許可する。コマ内動画も同じartRectとclipを使用し、終了時は元の作画レイヤーに戻る。文字・枠overlayを動画の上に維持する。拡大表示だけコマの切り抜きを外し、motion動画の全画素をcontainで見せる。`motion`に別の配置を持たせない。制作側が静止ページに焼き込むoverflowはホームコマ内表示の例外であり、Liveの動画・クリック可能領域のclipは広げない。任意fieldや外部URLは引き続き拒否する。
+ページ上の通常のホームコマ内表示・コマ内動画クリップ・クリック可能領域はすべて`clip ∩ artRect`とする。v2ではartRectがframeを覆うcover（crop）か、四隅がclip内にあるcontainのいずれかを許可する。コマ内動画も同じartRectとclipを使用し、終了時は元の作画レイヤーに戻る。既定では再生中のコマ動画をoverlayより前に表示する。clipとartRectは変えず、他コマの文字・枠を保持する。読書メニューで無効化できる。素材に焼き込まれた文字は除去しない。拡大表示だけコマの切り抜きを外し、motion動画の全画素をcontainで見せる。`motion`に別の配置を持たせない。制作側が静止ページに焼き込むoverflowはホームコマ内表示の例外であり、Liveの動画・クリック可能領域のclipは広げない。任意fieldや外部URLは引き続き拒否する。
 
 拡大動画の操作UIは配信契約ではなくreaderの表示仕様である。ブラウザ標準の`video controls`は使用せず、黒いシアター表示を動画中心に保つ。再生中は操作UIを自動的に隠し、必要時だけ再生／一時停止、シーク、ミュート／音声オン、時間表示を表示する。10秒送り、PiP、ブラウザ依存の追加メニューは表示しない。
 

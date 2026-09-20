@@ -31,6 +31,34 @@ test('shared reader shell puts work navigation in a collapsible sidebar',async({
  await expect(page.locator('.reader-shell')).not.toHaveClass(/sidebar-open/);
 });
 
+test('playing panel hides lettering by default, restores it, and respects a saved opt-out',async({page})=>{
+ await page.goto('/');
+ const motion=page.locator('.motion').first(),overlay=page.locator('.overlay').first();
+ await expect(motion).not.toHaveClass(/motion-above-overlay/);
+ await motionHit(page).first().click();
+ await expect(motion).toHaveClass(/motion-above-overlay/);
+ expect(await motion.evaluate(el=>getComputedStyle(el).zIndex)).toBe('4');
+ await expect(overlay).toBeVisible();
+ await expect(page.locator('.motion-above-overlay')).toHaveCount(1);
+ await expect(page.locator('.overlay')).toHaveCount(3);
+ await page.locator('video').evaluate(v=>v.dispatchEvent(new Event('ended')));
+ await expect(motion).not.toHaveClass(/motion-above-overlay/);
+ await motionHit(page).first().click();
+ await expect(motion).toHaveClass(/motion-above-overlay/);
+ await page.locator('.sidebar-toggle').click();
+ await expect(motion).not.toHaveClass(/motion-above-overlay/);
+ const setting=page.getByRole('checkbox',{name:'動画再生中はコマ内の吹き出し・文字を隠す'});
+ await expect(setting).toBeChecked();
+ await setting.uncheck();
+ await page.reload();
+ await page.locator('.sidebar-toggle').click();
+ await expect(setting).not.toBeChecked();
+ await page.locator('.sidebar-toggle').click();
+ await motionHit(page).first().click();
+ await expect(page.locator('video')).toBeVisible();
+ await expect(motion).not.toHaveClass(/motion-above-overlay/);
+});
+
 test('motion panels expose only a subtle marker and the full panel is clickable',async({page})=>{
  await page.goto('/');
  await expect(page.locator('.panel-control,.expand-control')).toHaveCount(0);

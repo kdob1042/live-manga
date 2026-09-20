@@ -22,6 +22,8 @@ const markerStyle=(_panel:Panel,_page:Page)=>({
  top:'6px',
  transform:'translateX(-50%)'
 });
+const MOTION_OVERLAY_PREFERENCE='live-manga.hide-overlay-during-motion';
+const readMotionOverlayPreference=()=>{try{return window.localStorage.getItem(MOTION_OVERLAY_PREFERENCE)!=='false';}catch{return true;}};
 const formatTime=(seconds:number)=>{
  if(!Number.isFinite(seconds)||seconds<0)return '0:00';
  const whole=Math.floor(seconds);
@@ -35,6 +37,8 @@ export function Reader({manifest,base,preview,onRefreshPreview,refreshing=false,
  const matchingPanels=new Set(matched?.panelIds??[]);
  const [active,setActive]=useState<string|null>(null),[status,setStatus]=useState(''),[failed,setFailed]=useState<Record<string,boolean>>({}),[modalPanel,setModalPanel]=useState<Panel|null>(null),[modalControlsVisible,setModalControlsVisible]=useState(false),[modalPlaying,setModalPlaying]=useState(false),[modalMuted,setModalMuted]=useState(true),[modalCurrentTime,setModalCurrentTime]=useState(0),[modalDuration,setModalDuration]=useState(0);
  const [sidebarOpen,setSidebarOpen]=useState(false);
+ const [hideOverlayDuringMotion,setHideOverlayDuringMotion]=useState(readMotionOverlayPreference),[inlinePlaying,setInlinePlaying]=useState<string|null>(null);
+ function changeHideOverlayDuringMotion(value:boolean){setHideOverlayDuringMotion(value);try{window.localStorage.setItem(MOTION_OVERLAY_PREFERENCE,String(value));}catch{}}
  const generation=useRef(0),current=useRef<HTMLVideoElement|null>(null),timer=useRef<ReturnType<typeof setTimeout>|undefined>(undefined),modalControlsTimer=useRef<ReturnType<typeof setTimeout>|undefined>(undefined),surface=useRef<HTMLDivElement|null>(null),dialog=useRef<HTMLDialogElement|null>(null),modalHost=useRef<HTMLDivElement|null>(null),longPress=useRef<{timer:ReturnType<typeof setTimeout>;x:number;y:number}|null>(null),suppressClick=useRef(false),lastInput=useRef<'touch'|'mouse'>('mouse'),restoreFocus=useRef<HTMLElement|null>(null),sidebarToggle=useRef<HTMLButtonElement|null>(null);
  const assets=new Map(manifest.assets.map(a=>[a.id,a]));const url=(id:string)=>base+assets.get(id)!.path;
  function cancelLongPress(){if(longPress.current){clearTimeout(longPress.current.timer);longPress.current=null;}}
@@ -58,7 +62,7 @@ export function Reader({manifest,base,preview,onRefreshPreview,refreshing=false,
   video.muted=!video.muted;setModalMuted(video.muted);showModalControls(true);
  }
  function closeDialog(){if(dialog.current?.open)dialog.current.close();document.body.classList.remove('modal-open');setModalPanel(null);const target=restoreFocus.current;restoreFocus.current=null;if(target){target.focus({preventScroll:true});requestAnimationFrame(()=>{if(target.isConnected)target.focus({preventScroll:true});});}}
- function stop(message='',closeModal=true) {generation.current++;clearTimeout(timer.current);clearTimeout(modalControlsTimer.current);cancelLongPress();if(current.current){current.current.pause();current.current.removeAttribute('src');current.current.load();current.current.remove();current.current=null;}setActive(null);setStatus(message);resetModalControls();if(closeModal)closeDialog();}
+ function stop(message='',closeModal=true) {generation.current++;clearTimeout(timer.current);clearTimeout(modalControlsTimer.current);cancelLongPress();if(current.current){current.current.pause();current.current.removeAttribute('src');current.current.load();current.current.remove();current.current=null;}setActive(null);setInlinePlaying(null);setStatus(message);resetModalControls();if(closeModal)closeDialog();}
  useEffect(()=>{const hide=()=>{if(document.hidden)stop();};document.addEventListener('visibilitychange',hide);return()=>{document.removeEventListener('visibilitychange',hide);stop();};},[]);
  useEffect(()=>{const close=(event:KeyboardEvent)=>{if(event.key==='Escape'&&sidebarOpen)closeSidebar();};document.addEventListener('keydown',close);return()=>document.removeEventListener('keydown',close);},[sidebarOpen]);
  useEffect(()=>{if(!active)return;const observer=new IntersectionObserver(entries=>{if(entries.some(e=>!e.isIntersecting))stop();},{threshold:0});observer.observe(surface.current!);return()=>observer.disconnect();},[active]);
@@ -71,8 +75,8 @@ export function Reader({manifest,base,preview,onRefreshPreview,refreshing=false,
   video.onloadedmetadata=()=>{if(!valid())return;if(expanded){setModalDuration(video.duration);setModalCurrentTime(video.currentTime);}if(resumeAt>0)video.currentTime=Math.min(resumeAt,Math.max(0,video.duration-.05));};
   video.ontimeupdate=()=>{if(valid()&&expanded)setModalCurrentTime(video.currentTime);};
   video.onvolumechange=()=>{if(valid()&&expanded)setModalMuted(video.muted);};
-  video.onpause=()=>{if(valid()&&expanded)setModalPlaying(false);};
-  video.onplaying=()=>{if(!valid()){video.pause();return;}clearTimeout(timer.current);video.style.opacity='1';if(expanded)setModalPlaying(true);setStatus(expanded?'拡大再生中':'再生中');};
+  video.onpause=()=>{if(!valid())return;if(expanded)setModalPlaying(false);else setInlinePlaying(null);};
+  video.onplaying=()=>{if(!valid()){video.pause();return;}clearTimeout(timer.current);video.style.opacity='1';if(expanded)setModalPlaying(true);else setInlinePlaying(panel.id);setStatus(expanded?'拡大再生中':'再生中');};
   video.onended=()=>{if(valid())stop();};video.onerror=fail;video.onstalled=()=>{if(valid()){clearTimeout(timer.current);timer.current=setTimeout(fail,15000);}};
   timer.current=setTimeout(fail,15000);video.play().then(()=>{if(!valid())video.pause();}).catch(fail);
  }
@@ -103,7 +107,7 @@ export function Reader({manifest,base,preview,onRefreshPreview,refreshing=false,
  }
  function closeSidebar(){setSidebarOpen(false);requestAnimationFrame(()=>sidebarToggle.current?.focus({preventScroll:true}));}
  return <div className={`reader-shell${sidebarOpen?' sidebar-open':''}`}>
-  <ReaderSidebar manifest={manifest} preview={preview} pages={manifest.pages} visiblePageIds={visible} selectedTags={selectedTags} tagMode={tagMode} open={sidebarOpen} refreshing={refreshing} onClose={closeSidebar} onTagsChange={(tags,mode)=>{stop();setSelectedTags(tags);setTagMode(mode);}} onRefresh={onRefreshPreview} catalog={catalog} currentWorkId={workId} currentFormat={format} currentEpisodeId={episodeId}/>
+  <ReaderSidebar manifest={manifest} preview={preview} pages={manifest.pages} visiblePageIds={visible} selectedTags={selectedTags} tagMode={tagMode} open={sidebarOpen} hideOverlayDuringMotion={hideOverlayDuringMotion} onHideOverlayDuringMotionChange={changeHideOverlayDuringMotion} refreshing={refreshing} onClose={closeSidebar} onTagsChange={(tags,mode)=>{stop();setSelectedTags(tags);setTagMode(mode);}} onRefresh={onRefreshPreview} catalog={catalog} currentWorkId={workId} currentFormat={format} currentEpisodeId={episodeId}/>
   <button ref={sidebarToggle} className={`sidebar-toggle${sidebarOpen?' is-open':''}`} type="button" aria-expanded={sidebarOpen} aria-controls="reader-sidebar" aria-label={sidebarOpen?'読書メニューを閉じる':'読書メニューを開く'} onClick={()=>setSidebarOpen(value=>!value)}><span aria-hidden="true">{sidebarOpen?'›':'‹'}</span></button>
   <main className="reader-main">
    <div className="reader-status" role="status" aria-live="polite">{status}</div>
@@ -111,7 +115,7 @@ export function Reader({manifest,base,preview,onRefreshPreview,refreshing=false,
    {manifest.pages.map((page,index)=>({page,index})).filter(({page})=>visible.has(page.id)).map(({page,index})=><section id={`page-${page.id}`} className="reader-page" key={page.id} aria-label={`${index+1}ページ`}>
     <div className="page" style={{aspectRatio:`${page.width}/${page.height}`}}>
      <img className="layer" src={url(failed[page.id]?page.fallback:page.art)} width={page.width} height={page.height} alt={`${index+1}ページの漫画。本文は読書メニュー内の「テキストで読む」にあります。`} onError={()=>{stop();setFailed(f=>({...f,[page.id]:true}));}}/>
-     {!failed[page.id]&&page.panels.filter(p=>p.motion).map(panel=><React.Fragment key={panel.id}><div className={`motion${panel.clip?' motion-clip':''}`} style={{...placement(surfaceRect(panel),page),...clipStyle(panel)}}><div className="motion-media" id={`motion-${panel.id}`} style={panel.clip?relative(panel.artRect,panel.frame):undefined}/></div><div className="panel-actions" style={placement(actionRect(panel),page)}><button className="panel-hit-area" style={hitAreaStyle(panel)} aria-label={`${panelLabel(panel)} ${active===panel.id?'再生中。PCはもう一度クリック、スマホは長押しで拡大':'タップでコマ内再生。スマホは長押しで拡大'}`} aria-pressed={active===panel.id} onPointerDown={e=>beginLongPress(e,panel)} onPointerMove={moveLongPress} onPointerUp={e=>{if(e.pointerType==='touch')cancelLongPress();}} onPointerCancel={cancelTouch} onPointerLeave={e=>{if(e.pointerType==='touch')cancelLongPress();}} onContextMenu={e=>e.preventDefault()} onClick={e=>activate(panel,e.currentTarget,e)}><span className="sr-only">動きのあるコマ</span></button><span className={`motion-marker ${active===panel.id?'is-active':''}`} style={markerStyle(panel,page)} aria-hidden="true"/></div></React.Fragment>)}
+     {!failed[page.id]&&page.panels.filter(p=>p.motion).map(panel=><React.Fragment key={panel.id}><div className={`motion${panel.clip?' motion-clip':''}${hideOverlayDuringMotion&&inlinePlaying===panel.id?' motion-above-overlay':''}`} style={{...placement(surfaceRect(panel),page),...clipStyle(panel)}}><div className="motion-media" id={`motion-${panel.id}`} style={panel.clip?relative(panel.artRect,panel.frame):undefined}/></div><div className="panel-actions" style={placement(actionRect(panel),page)}><button className="panel-hit-area" style={hitAreaStyle(panel)} aria-label={`${panelLabel(panel)} ${active===panel.id?'再生中。PCはもう一度クリック、スマホは長押しで拡大':'タップでコマ内再生。スマホは長押しで拡大'}`} aria-pressed={active===panel.id} onPointerDown={e=>beginLongPress(e,panel)} onPointerMove={moveLongPress} onPointerUp={e=>{if(e.pointerType==='touch')cancelLongPress();}} onPointerCancel={cancelTouch} onPointerLeave={e=>{if(e.pointerType==='touch')cancelLongPress();}} onContextMenu={e=>e.preventDefault()} onClick={e=>activate(panel,e.currentTarget,e)}><span className="sr-only">動きのあるコマ</span></button><span className={`motion-marker ${active===panel.id?'is-active':''}`} style={markerStyle(panel,page)} aria-hidden="true"/></div></React.Fragment>)}
      {!failed[page.id]&&<img className="layer overlay" src={url(page.overlay)} width={page.width} height={page.height} alt="" onError={()=>{stop();setFailed(f=>({...f,[page.id]:true}));}}/>}
      <span className="folio" aria-hidden="true">{String(index+1).padStart(2,'0')}</span>
      {preview&&<div className="preview-page-status">{!!selectedTags.length&&<p>該当シーンのコマ: {page.panels.map((p,i)=>matchingPanels.has(p.id)?i+1:null).filter(Boolean).join('、')}</p>}{page.panels.map((panel,panelIndex)=>{const state=preview.panels.find(p=>p.id===panel.id);if(!state)return null;const notes=[state.art==='pending'?'作画待ち':'',state.lettering==='pending'?'文字配置待ち':'',state.motion==='stale'?'動画は旧版のため静止表示':state.motion==='pending'?'動画待ち':''].filter(Boolean);return notes.length?<p key={panel.id}>{panelIndex+1}コマ目: {notes.join('・')}</p>:null;})}</div>}
