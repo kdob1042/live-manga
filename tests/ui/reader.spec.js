@@ -264,7 +264,7 @@ test('three pages scroll continuously and the corner handle opens the page-three
  await handle.click();
  await page.locator('.toc-list a').nth(2).click();
  await expect(handle).toHaveAttribute('aria-expanded','false');
- await expect.poll(()=>pages.nth(2).evaluate(el=>Math.abs(el.getBoundingClientRect().top))).toBeLessThan(2);
+ await expect.poll(()=>pages.nth(2).evaluate(el=>Math.abs(window.scrollY-Math.min(el.getBoundingClientRect().top+window.scrollY,document.documentElement.scrollHeight-window.innerHeight)))).toBeLessThan(2);
  await motionHit(page).nth(2).click();
  await expect(page.locator('video')).toHaveCount(1);
  await expect(page.locator('[id^="motion-demo-page-3-"] video')).toHaveCount(1);
