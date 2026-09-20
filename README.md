@@ -24,3 +24,7 @@ npm run dev
 [作品形式](docs/FORMAT.md) · [公開手順](docs/DEPLOY.md) · [検証記録](docs/VALIDATION.md)
 
 制作側とのCI受入は `tests/exporter-lock.json` の固定commitを使用します。依存を導入したmanga-macのcheckoutを指定して `node scripts/exporter-acceptance.mjs /path/to/manga-mac` を実行すると、実書き出し→改変なしのコピー→Chromium/WebKitの読者試験を行います。
+
+### 読書操作の確認サンプル
+
+標準デモは既存の人工素材を再利用した3ページです（AI生成作品ではありません）。通常の縦スクロールで続けて読み、左下の小さな取っ手から目次を開けます。横フリックや強制ページスナップはありません。動画コマ上で指を動かした場合は再生・長押しを取り消します。配布契約のfixtureは1ページのまま、ビルド時にデモだけを3ページに展開します。
