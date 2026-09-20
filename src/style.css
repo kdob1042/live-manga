@@ -75,3 +75,29 @@ a.publication-episode:hover,a.publication-episode.is-current{background:#f4f7f2}
 
 
 @media(max-width:759px){.library-frame{padding-top:40px}}
+
+/* Expanded motion is a reading surface, not the browser's video chrome. */
+.video-dialog{inset:0;width:100%;max-width:none;height:100%;max-height:none;margin:0;padding:0;border:0;border-radius:0;background:#050707;color:#fff;overflow:hidden}
+.video-dialog::backdrop{background:#000}
+.video-dialog-shell{position:relative;width:100%;height:100%;max-height:none;display:grid;place-items:center;isolation:isolate;overflow:hidden;background:#050707}
+.video-dialog .modal-motion{position:relative;z-index:1;display:grid;place-items:center;width:100%;height:100%;min-height:0;background:#050707}
+.video-dialog .modal-motion video{display:block;width:100%;height:100%;max-height:none;object-fit:contain;background:#050707}
+.video-dialog .modal-media{width:100%;height:100%}
+.video-dialog .modal-media video{width:100%;height:100%;object-fit:contain}
+.dialog-close{position:absolute;z-index:6;top:max(14px,env(safe-area-inset-top));right:max(14px,env(safe-area-inset-right));width:42px;height:42px;border:1px solid #ffffff26;border-radius:50%;background:#07101080;color:#fff;font-size:27px;line-height:1;cursor:pointer;opacity:.78;backdrop-filter:blur(8px)}
+.dialog-close:hover{background:#ffffff20;opacity:1}
+.dialog-close:focus-visible{outline:3px solid #e69a55;outline-offset:3px;opacity:1}
+.modal-ui{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;justify-content:flex-end;opacity:0;transition:opacity .18s ease;pointer-events:none}
+.modal-ui.is-visible,.modal-ui:focus-within{opacity:1}
+.modal-ui-scrim{position:absolute;right:0;bottom:0;left:0;height:34%;background:linear-gradient(transparent,#000b);pointer-events:none}
+.modal-controls{position:relative;display:flex;align-items:center;gap:12px;width:100%;padding:16px max(18px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left));transform:translateY(10px);transition:transform .18s ease;pointer-events:auto}
+.modal-ui.is-visible .modal-controls,.modal-ui:focus-within .modal-controls{transform:none}
+.modal-controls button{display:grid;place-items:center;flex:none;min-width:42px;height:36px;padding:0 10px;border:1px solid #ffffff35;border-radius:18px;background:#07101099;color:#fff;cursor:pointer;font-size:12px;backdrop-filter:blur(8px)}
+.modal-controls button:hover{background:#ffffff22}
+.modal-controls button:focus-visible{outline:2px solid #fff;outline-offset:3px}
+.modal-play{font-size:16px!important}
+.modal-seek-label{display:flex;align-items:center;min-width:0;flex:1}
+.modal-seek-label input{width:100%;accent-color:#fff;cursor:pointer}
+.modal-time{flex:none;color:#fff;white-space:nowrap;font-size:11px;font-variant-numeric:tabular-nums;text-shadow:0 1px 4px #000}
+.modal-mute{white-space:nowrap}
+@media(max-width:759px){.modal-controls{gap:8px;padding-top:12px}.modal-time{font-size:10px}.modal-controls button{min-width:38px;padding:0 8px}}

@@ -22,30 +22,57 @@ const markerStyle=(_panel:Panel,_page:Page)=>({
  top:'6px',
  transform:'translateX(-50%)'
 });
+const formatTime=(seconds:number)=>{
+ if(!Number.isFinite(seconds)||seconds<0)return '0:00';
+ const whole=Math.floor(seconds);
+ return `${Math.floor(whole/60)}:${String(whole%60).padStart(2,'0')}`;
+};
 const LONG_PRESS_MS=450,MOVE_TOLERANCE=10;
 export function Reader({manifest,base,preview,onRefreshPreview,refreshing=false,catalog,workId,format,episodeId}:{manifest:Manifest;base:string;preview?:Preview;onRefreshPreview?:()=>void;refreshing?:boolean;catalog?:PublicationCatalog;workId?:string;format?:'manga';episodeId?:string}) {
  const [selectedTags,setSelectedTags]=useState<string[]>([]),[tagMode,setTagMode]=useState<'any'|'all'>('any');
  const matched=preview?previewMatches(preview,selectedTags,tagMode):null;
  const visible: Set<string>=new Set<string>(matched?.pageIds??manifest.pages.map(p=>p.id));
  const matchingPanels=new Set(matched?.panelIds??[]);
- const [active,setActive]=useState<string|null>(null),[status,setStatus]=useState(''),[failed,setFailed]=useState<Record<string,boolean>>({}),[modalPanel,setModalPanel]=useState<Panel|null>(null);
+ const [active,setActive]=useState<string|null>(null),[status,setStatus]=useState(''),[failed,setFailed]=useState<Record<string,boolean>>({}),[modalPanel,setModalPanel]=useState<Panel|null>(null),[modalControlsVisible,setModalControlsVisible]=useState(false),[modalPlaying,setModalPlaying]=useState(false),[modalMuted,setModalMuted]=useState(true),[modalCurrentTime,setModalCurrentTime]=useState(0),[modalDuration,setModalDuration]=useState(0);
  const [sidebarOpen,setSidebarOpen]=useState(false);
- const generation=useRef(0),current=useRef<HTMLVideoElement|null>(null),timer=useRef<ReturnType<typeof setTimeout>|undefined>(undefined),surface=useRef<HTMLDivElement|null>(null),dialog=useRef<HTMLDialogElement|null>(null),modalHost=useRef<HTMLDivElement|null>(null),longPress=useRef<{timer:ReturnType<typeof setTimeout>;x:number;y:number}|null>(null),suppressClick=useRef(false),lastInput=useRef<'touch'|'mouse'>('mouse'),restoreFocus=useRef<HTMLElement|null>(null),sidebarToggle=useRef<HTMLButtonElement|null>(null);
+ const generation=useRef(0),current=useRef<HTMLVideoElement|null>(null),timer=useRef<ReturnType<typeof setTimeout>|undefined>(undefined),modalControlsTimer=useRef<ReturnType<typeof setTimeout>|undefined>(undefined),surface=useRef<HTMLDivElement|null>(null),dialog=useRef<HTMLDialogElement|null>(null),modalHost=useRef<HTMLDivElement|null>(null),longPress=useRef<{timer:ReturnType<typeof setTimeout>;x:number;y:number}|null>(null),suppressClick=useRef(false),lastInput=useRef<'touch'|'mouse'>('mouse'),restoreFocus=useRef<HTMLElement|null>(null),sidebarToggle=useRef<HTMLButtonElement|null>(null);
  const assets=new Map(manifest.assets.map(a=>[a.id,a]));const url=(id:string)=>base+assets.get(id)!.path;
  function cancelLongPress(){if(longPress.current){clearTimeout(longPress.current.timer);longPress.current=null;}}
+ function showModalControls(persist=false){
+  setModalControlsVisible(true);
+  clearTimeout(modalControlsTimer.current);
+  if(!persist&&current.current&&!current.current.paused)modalControlsTimer.current=setTimeout(()=>setModalControlsVisible(false),2200);
+ }
+ function resetModalControls(){clearTimeout(modalControlsTimer.current);setModalControlsVisible(false);setModalPlaying(false);setModalMuted(true);setModalCurrentTime(0);setModalDuration(0);}
+ function toggleModalPlayback(){
+  const video=current.current;if(!video||!dialog.current?.open)return;
+  showModalControls();
+  if(video.paused)void video.play().catch(()=>{});else video.pause();
+ }
+ function seekModal(event:React.ChangeEvent<HTMLInputElement>){
+  const video=current.current;if(!video||!dialog.current?.open)return;
+  video.currentTime=Number(event.target.value);setModalCurrentTime(video.currentTime);showModalControls(true);
+ }
+ function toggleModalMute(){
+  const video=current.current;if(!video||!dialog.current?.open)return;
+  video.muted=!video.muted;setModalMuted(video.muted);showModalControls(true);
+ }
  function closeDialog(){if(dialog.current?.open)dialog.current.close();document.body.classList.remove('modal-open');setModalPanel(null);const target=restoreFocus.current;restoreFocus.current=null;if(target){target.focus({preventScroll:true});requestAnimationFrame(()=>{if(target.isConnected)target.focus({preventScroll:true});});}}
- function stop(message='',closeModal=true) {generation.current++;clearTimeout(timer.current);cancelLongPress();if(current.current){current.current.pause();current.current.removeAttribute('src');current.current.load();current.current.remove();current.current=null;}setActive(null);setStatus(message);if(closeModal)closeDialog();}
+ function stop(message='',closeModal=true) {generation.current++;clearTimeout(timer.current);clearTimeout(modalControlsTimer.current);cancelLongPress();if(current.current){current.current.pause();current.current.removeAttribute('src');current.current.load();current.current.remove();current.current=null;}setActive(null);setStatus(message);resetModalControls();if(closeModal)closeDialog();}
  useEffect(()=>{const hide=()=>{if(document.hidden)stop();};document.addEventListener('visibilitychange',hide);return()=>{document.removeEventListener('visibilitychange',hide);stop();};},[]);
  useEffect(()=>{const close=(event:KeyboardEvent)=>{if(event.key==='Escape'&&sidebarOpen)closeSidebar();};document.addEventListener('keydown',close);return()=>document.removeEventListener('keydown',close);},[sidebarOpen]);
  useEffect(()=>{if(!active)return;const observer=new IntersectionObserver(entries=>{if(entries.some(e=>!e.isIntersecting))stop();},{threshold:0});observer.observe(surface.current!);return()=>observer.disconnect();},[active]);
  useEffect(()=>{if(!active)return;const stopOutside=(event:MouseEvent)=>{const target=event.target; if(!(target instanceof Element))return; if(target.closest('.panel-hit-area,.video-dialog-shell'))return; stop();};document.addEventListener('click',stopOutside);return()=>document.removeEventListener('click',stopOutside);},[active]);
  function start(panel:Panel,host:HTMLDivElement,{expanded=false,resumeAt=0}={}) {
   const epoch=generation.current,video=document.createElement('video');surface.current=host.parentElement as HTMLDivElement;
-  video.playsInline=true;video.muted=true;video.controls=expanded;video.preload='none';if(!expanded)video.setAttribute('aria-hidden','true');else video.setAttribute('aria-label',`${panelLabel(panel)} 動画`);video.style.opacity='0';video.src=url(panel.motion!.asset);host.append(video);current.current=video;setActive(panel.id);setStatus(expanded?'拡大動画を読み込み中…':'読み込み中…');
+  video.playsInline=true;video.muted=true;video.controls=false;video.preload='none';if(!expanded){video.setAttribute('aria-hidden','true');}else{video.setAttribute('aria-label',`${panelLabel(panel)} 動画`);video.onclick=toggleModalPlayback;video.onpointermove=()=>showModalControls();}video.style.opacity='0';video.src=url(panel.motion!.asset);host.append(video);current.current=video;setActive(panel.id);if(expanded){setModalControlsVisible(false);setModalPlaying(false);setModalMuted(true);}setStatus(expanded?'拡大動画を読み込み中…':'読み込み中…');
   const valid=()=>generation.current===epoch&&current.current===video;
   const fail=()=>{if(valid())stop('動画を読み込めませんでした。コマを押すと再試行できます。');};
-  video.onloadedmetadata=()=>{if(valid()&&resumeAt>0)video.currentTime=Math.min(resumeAt,Math.max(0,video.duration-.05));};
-  video.onplaying=()=>{if(!valid()){video.pause();return;}clearTimeout(timer.current);video.style.opacity='1';setStatus(expanded?'拡大再生中':'再生中');};
+  video.onloadedmetadata=()=>{if(!valid())return;if(expanded){setModalDuration(video.duration);setModalCurrentTime(video.currentTime);}if(resumeAt>0)video.currentTime=Math.min(resumeAt,Math.max(0,video.duration-.05));};
+  video.ontimeupdate=()=>{if(valid()&&expanded)setModalCurrentTime(video.currentTime);};
+  video.onvolumechange=()=>{if(valid()&&expanded)setModalMuted(video.muted);};
+  video.onpause=()=>{if(valid()&&expanded)setModalPlaying(false);};
+  video.onplaying=()=>{if(!valid()){video.pause();return;}clearTimeout(timer.current);video.style.opacity='1';if(expanded)setModalPlaying(true);setStatus(expanded?'拡大再生中':'再生中');};
   video.onended=()=>{if(valid())stop();};video.onerror=fail;video.onstalled=()=>{if(valid()){clearTimeout(timer.current);timer.current=setTimeout(fail,15000);}};
   timer.current=setTimeout(fail,15000);video.play().then(()=>{if(!valid())video.pause();}).catch(fail);
  }
@@ -90,7 +117,7 @@ export function Reader({manifest,base,preview,onRefreshPreview,refreshing=false,
     </div>
    </section>)}
   </main>
-  <dialog ref={dialog} className="video-dialog" aria-label={modalPanel?`${panelLabel(modalPanel)}の拡大動画`:'拡大動画'} onCancel={e=>{e.preventDefault();stop();}} onClick={e=>{if(e.target===e.currentTarget)stop();}}><div className="video-dialog-shell"><div className="video-dialog-head"><p>{modalPanel?panelLabel(modalPanel):''}</p><button className="dialog-close" aria-label="拡大動画を閉じる" onClick={()=>stop()}>×</button></div><div className="modal-motion"><div ref={modalHost} className="modal-media"/></div></div></dialog>
+  <dialog ref={dialog} className="video-dialog" aria-label={modalPanel?`${panelLabel(modalPanel)}の拡大動画`:'拡大動画'} onCancel={e=>{e.preventDefault();stop();}} onClick={e=>{if(e.target===e.currentTarget)stop();}}><div className="video-dialog-shell" onPointerMove={()=>showModalControls()}><h2 className="sr-only">{modalPanel?panelLabel(modalPanel):'拡大動画'}</h2><button className="dialog-close" aria-label="拡大動画を閉じる" onClick={()=>stop()}>×</button><div className="modal-motion"><div ref={modalHost} className="modal-media"/></div><div className={`modal-ui${modalControlsVisible?' is-visible':''}`}><div className="modal-ui-scrim"/><div className="modal-controls" aria-label="動画操作"><button className="modal-play" type="button" aria-label={modalPlaying?'一時停止':'再生'} onClick={toggleModalPlayback}>{modalPlaying?'Ⅱ':'▶'}</button><label className="modal-seek-label"><span className="sr-only">再生位置</span><input type="range" min="0" max={modalDuration||1} step="0.01" value={Math.min(modalCurrentTime,modalDuration||1)} aria-label="再生位置" aria-valuetext={`${formatTime(modalCurrentTime)} / ${formatTime(modalDuration)}`} onChange={seekModal}/></label><span className="modal-time" aria-live="off">{formatTime(modalCurrentTime)} / {formatTime(modalDuration)}</span><button className="modal-mute" type="button" aria-label={modalMuted?'音声をオン':'ミュート'} onClick={toggleModalMute}>{modalMuted?'音声をオン':'ミュート'}</button></div></div></div></dialog>
  </div>;
 }
 async function start() {
@@ -127,4 +154,3 @@ async function start() {
  } catch(error){root.render(<main role="alert"><h1>作品を開けませんでした</h1><p>{error instanceof Error ? error.message : String(error)}</p><a href="/">作品一覧へ戻る</a></main>);}
 }
 start();
-
