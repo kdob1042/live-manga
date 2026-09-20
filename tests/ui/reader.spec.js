@@ -190,6 +190,12 @@ test('PC second click opens one large modal video and restores focus on close',a
  await video.click();
  await expect.poll(()=>video.evaluate(v=>v.paused)).toBe(true);
  await expect(dialog.getByRole('button',{name:'再生'})).toBeVisible();
+ await dialog.getByRole('button',{name:'音声をオン',exact:true}).click();
+ await expect(video).toHaveJSProperty('muted',false);
+ await dialog.getByRole('button',{name:'ミュート',exact:true}).click();
+ await expect(video).toHaveJSProperty('muted',true);
+ await dialog.getByRole('slider',{name:'再生位置'}).press('Home');
+ await expect.poll(()=>video.evaluate(v=>v.currentTime)).toBeLessThan(0.1);
  await dialog.getByRole('button',{name:'再生'}).click();
  await expect.poll(()=>video.evaluate(v=>v.paused)).toBe(false);
  await page.getByRole('button',{name:'拡大動画を閉じる'}).focus();
