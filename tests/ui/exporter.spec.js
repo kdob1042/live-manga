@@ -63,7 +63,7 @@ test('slanted crop clips pointer hits; enlarged playback shows the full uncroppe
  expect(await modal.evaluate(e=>getComputedStyle(e).clipPath)).toBe('none');
  expect(await host.evaluate(e=>getComputedStyle(e).clipPath)).toBe('none');
  expect(await video.evaluate(e=>getComputedStyle(e).objectFit)).toBe('contain');
- await expect(video).toHaveAttribute('controls','');
+ await expect(video).not.toHaveAttribute('controls');
  await page.keyboard.press('Escape');await expect(page.locator('video')).toHaveCount(0);await expect(target).toBeFocused();
 });
 
