@@ -210,6 +210,7 @@ test('touch short tap plays and touch long press opens modal while drag remains 
  const point={pointerType:'touch',button:0,clientX:box.x+box.width/2,clientY:box.y+box.height/2};
  await hit.dispatchEvent('pointerdown',point);
  await hit.dispatchEvent('pointerup',point);
+ await hit.dispatchEvent('pointerleave',point);
  await hit.dispatchEvent('click',{detail:1,clientX:point.clientX,clientY:point.clientY});
  await expect(page.locator('video')).toHaveCount(1);
  await page.locator('video').evaluate(v=>v.pause());
