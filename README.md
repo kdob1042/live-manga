@@ -1,7 +1,7 @@
 # Live Manga
 
 普段は漫画。触れたコマだけ、その場で動画になる読者用Webアプリ。
-制作は [manga-mac](https://github.com/kdob1042/manga-mac)、配信用契約の正本は本リポジトリの `contracts/`（2.0.0、従来の1.0.0も読込可能）。
+制作は [manga-mac](https://github.com/kdob1042/manga-mac)、配信用契約の正本は本リポジトリの `contracts/`（2.0.0、従来の1.0.0も読込可能）。原稿庫の正本 `story-library/works/{workId}/work.json` は本アプリの入力ではなく、manga-macが検証済みの配信manifestへ書き出す。
 
 ```sh
 npm ci
