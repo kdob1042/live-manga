@@ -112,9 +112,9 @@ export default function ReaderSidebar({
               checked={hideOverlayDuringMotion}
               onChange={event => onHideOverlayDuringMotionChange(event.target.checked)}
             />
-            <span>動画再生中は吹き出し・文字・枠を隠す</span>
+            <span>動画再生中はコマ内の吹き出し・文字を隠す</span>
           </label>
-          <p className="reader-setting-help">コマ内動画の再生中だけ、ページの透過レイヤーを隠します。</p>
+          <p className="reader-setting-help">再生中のコマだけに適用します。停止すると元に戻ります。</p>
         </section>
         {preview && <section className="sidebar-tags-section" aria-labelledby="reader-tags-heading">
           <p id="reader-tags-heading" className="sidebar-section-label">タグで絞り込む</p>

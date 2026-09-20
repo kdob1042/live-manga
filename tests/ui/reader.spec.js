@@ -16,7 +16,7 @@ test('shared reader shell puts work navigation in a collapsible sidebar',async({
  await expect(page.getByRole('button',{name:'読書メニューを閉じる'})).toHaveCount(1);
  await expect(page.locator('.sidebar-toggle')).toHaveText('›');
  await expect(page.locator('.work-list .work-option')).toHaveCount(1);
- await expect(page.locator('.toc-list a')).toHaveCount(1);
+ await expect(page.locator('.toc-list a')).toHaveCount(3);
  await expect(page.locator('.sidebar-text-reader')).toBeVisible();
  await page.locator('.sidebar-text-reader > summary').click();
  await expect(page.getByText('静かな午後。',{exact:true})).toBeVisible();
@@ -31,31 +31,38 @@ test('shared reader shell puts work navigation in a collapsible sidebar',async({
  await expect(page.locator('.reader-shell')).not.toHaveClass(/sidebar-open/);
 });
 
-test('reader setting hides the page overlay only during in-panel playback and persists',async({page})=>{
+test('playing panel hides lettering by default, restores it, and respects a saved opt-out',async({page})=>{
  await page.goto('/');
- const overlay=page.locator('.overlay').first();
- await page.locator('.sidebar-toggle').click();
- const setting=page.getByRole('checkbox',{name:'動画再生中は吹き出し・文字・枠を隠す'});
- await expect(setting).toBeVisible();
- await expect(setting).not.toBeChecked();
- await setting.check();
- await page.locator('.sidebar-toggle').click();
- await expect(overlay).not.toHaveClass(/overlay-hidden-during-motion/);
+ const motion=page.locator('.motion').first(),overlay=page.locator('.overlay').first();
+ await expect(motion).not.toHaveClass(/motion-above-overlay/);
  await motionHit(page).first().click();
- await expect(page.locator('video')).toBeVisible();
- await expect(overlay).toHaveClass(/overlay-hidden-during-motion/);
+ await expect(motion).toHaveClass(/motion-above-overlay/);
+ expect(await motion.evaluate(el=>getComputedStyle(el).zIndex)).toBe('4');
+ await expect(overlay).toBeVisible();
+ await expect(page.locator('.motion-above-overlay')).toHaveCount(1);
+ await expect(page.locator('.overlay')).toHaveCount(3);
+ await page.locator('video').evaluate(v=>v.dispatchEvent(new Event('ended')));
+ await expect(motion).not.toHaveClass(/motion-above-overlay/);
+ await motionHit(page).first().click();
+ await expect(motion).toHaveClass(/motion-above-overlay/);
  await page.locator('.sidebar-toggle').click();
- await expect(page.locator('video')).toHaveCount(0);
- await expect(overlay).not.toHaveClass(/overlay-hidden-during-motion/);
+ await expect(motion).not.toHaveClass(/motion-above-overlay/);
+ const setting=page.getByRole('checkbox',{name:'動画再生中はコマ内の吹き出し・文字を隠す'});
+ await expect(setting).toBeChecked();
+ await setting.uncheck();
  await page.reload();
  await page.locator('.sidebar-toggle').click();
- await expect(page.getByRole('checkbox',{name:'動画再生中は吹き出し・文字・枠を隠す'})).toBeChecked();
+ await expect(setting).not.toBeChecked();
+ await page.locator('.sidebar-toggle').click();
+ await motionHit(page).first().click();
+ await expect(page.locator('video')).toBeVisible();
+ await expect(motion).not.toHaveClass(/motion-above-overlay/);
 });
 
 test('motion panels expose only a subtle marker and the full panel is clickable',async({page})=>{
  await page.goto('/');
  await expect(page.locator('.panel-control,.expand-control')).toHaveCount(0);
- await expect(page.locator('.motion-marker')).toHaveCount(1);
+ await expect(page.locator('.motion-marker')).toHaveCount(3);
  const motionBox=await page.locator('.motion').first().boundingBox();
  const hitBox=await motionHit(page).first().boundingBox();
  if(!motionBox||!hitBox)throw new Error('Expected the motion panel and its hit area to be visible');
@@ -70,13 +77,13 @@ test('short tap loads one video; natural end returns to poster without layout ch
  await page.goto('/');
  await expect(page.locator('.page').first()).toBeVisible();
  expect(videos).toHaveLength(0);
- const rect=await page.locator('.page').boundingBox();
+ const rect=await page.locator('.page').first().boundingBox();
  await motionHit(page).first().click();
  await expect(page.locator('video')).toBeVisible();
  await expect.poll(()=>page.locator('video').evaluate(v=>v.currentTime)).toBeGreaterThan(0);
  await page.screenshot({path:'test-results/reader-playing.png',fullPage:true});
  await expect(page.locator('video')).toHaveCount(0,{timeout:10000});
- expect(await page.locator('.page').boundingBox()).toEqual(rect);
+ expect(await page.locator('.page').first().boundingBox()).toEqual(rect);
  await page.locator('.sidebar-toggle').click();
  await page.locator('.sidebar-text-reader > summary').click();
  await expect(page.getByText('静かな午後。',{exact:true})).toBeVisible();
@@ -106,7 +113,7 @@ test('404 and play rejection preserve the readable page and permit retry',async(
  await motionHit(page).first().click();
  await expect(page.getByRole('status')).toContainText('再試行');
  await expect(page.locator('video')).toHaveCount(0);
- await expect(page.locator('.page')).toBeVisible();
+ await expect(page.locator('.page').first()).toBeVisible();
  await page.unroute('**/*.mp4');
  await page.evaluate(()=>{HTMLMediaElement.prototype.play=()=>Promise.reject(new Error('denied'));});
  await motionHit(page).first().click();
@@ -119,7 +126,7 @@ test('reduced motion never fetches video; mobile layout remains within the viewp
  await page.goto('/');
  await page.locator('.sidebar-toggle').click();
  await expect(page.getByText('静止漫画として読む',{exact:true})).toHaveCount(0);
- await expect(page.locator('.panel-hit-area')).toHaveCount(1);
+ await expect(page.locator('.panel-hit-area')).toHaveCount(3);
  await expect(page.locator('video')).toHaveCount(0);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(390);
  await page.screenshot({path:'test-results/reader-mobile.png',fullPage:true});
@@ -157,7 +164,7 @@ test('late play resolution is ignored after another panel starts',async({page})=
 test('v2 cover motion is clipped in-panel but expanded video shows the full uncropped frame',async({page})=>{
  await page.route('**/live-manga.json',async route=>{
   const response=await route.fetch(),m=await response.json();m.schemaVersion='2.0.0';
-  for(const panel of m.pages[0].panels){
+  for(const panel of m.pages.flatMap(p=>p.panels)){
    const {x,y,width:w,height:h}=panel.frame;
    panel.clip=[[x,y],[x+w,y],[x+w,y+h],[x,y+h]];
    if(panel.motion){
@@ -186,7 +193,7 @@ test('v2 cover motion is clipped in-panel but expanded video shows the full uncr
  expect(await modal.evaluate(el=>getComputedStyle(el).clipPath)).toBe('none');
  expect(await modalMedia.evaluate(el=>getComputedStyle(el).clipPath)).toBe('none');
  expect(await video.evaluate(el=>getComputedStyle(el).objectFit)).toBe('contain');
- await expect(video).toHaveAttribute('controls','');
+ await expect(video).not.toHaveAttribute('controls');
  await page.getByRole('button',{name:'拡大動画を閉じる'}).click();
  await expect(hit).toBeFocused();
 });
@@ -201,7 +208,21 @@ test('PC second click opens one large modal video and restores focus on close',a
  const dialog=page.getByRole('dialog',{name:/拡大動画/});
  await expect(dialog).toBeVisible();
  await expect(dialog.locator('video')).toHaveCount(1);
- await expect(dialog.locator('video')).toHaveAttribute('controls','');
+ const video=dialog.locator('video');
+ await expect(video).not.toHaveAttribute('controls');
+ await expect(video).toHaveJSProperty('controls',false);
+ await expect(dialog.locator('.modal-ui')).not.toHaveClass(/is-visible/);
+ await dialog.locator('.modal-motion').hover();
+ await expect(dialog.locator('.modal-ui')).toHaveClass(/is-visible/);
+ await expect(dialog.getByRole('button',{name:'一時停止'})).toBeVisible();
+ await video.click();
+ await expect.poll(()=>video.evaluate(v=>v.paused)).toBe(true);
+ await expect(dialog.getByRole('button',{name:'再生'})).toBeVisible();
+ await dialog.getByRole('button',{name:'再生'}).click();
+ await expect.poll(()=>video.evaluate(v=>v.paused)).toBe(false);
+ await page.getByRole('button',{name:'拡大動画を閉じる'}).focus();
+ await page.mouse.move(0,0);
+ await expect(dialog.locator('.modal-ui')).not.toHaveClass(/is-visible/,{timeout:3000});
  await expect.poll(()=>dialog.locator('video').evaluate(v=>v.currentTime)).toBeGreaterThan(0);
  await page.getByRole('button',{name:'拡大動画を閉じる'}).click();
  await expect(dialog).not.toBeVisible();
@@ -217,6 +238,7 @@ test('touch short tap plays and touch long press opens modal while drag remains 
  const point={pointerType:'touch',button:0,clientX:box.x+box.width/2,clientY:box.y+box.height/2};
  await hit.dispatchEvent('pointerdown',point);
  await hit.dispatchEvent('pointerup',point);
+ await hit.dispatchEvent('pointerleave',point);
  await hit.dispatchEvent('click',{detail:1,clientX:point.clientX,clientY:point.clientY});
  await expect(page.locator('video')).toHaveCount(1);
  await page.locator('video').evaluate(v=>v.pause());
@@ -232,13 +254,15 @@ test('touch short tap plays and touch long press opens modal while drag remains 
  await hit.dispatchEvent('pointermove',moved);
  await page.waitForTimeout(500);
  await hit.dispatchEvent('pointerup',moved);
+ await hit.dispatchEvent('click',{detail:1});
+ await expect(page.locator('video')).toHaveCount(0);
  await expect(dialog).not.toBeVisible();
 });
 
 test('failed overlay falls back to the completed page and removes its motion hit area',async({page})=>{
  await page.setViewportSize({width:1100,height:500});
  await page.goto('/');
- const overlay=await page.locator('.overlay').getAttribute('src');
+ const overlay=await page.locator('.overlay').first().getAttribute('src');
  await page.route('**'+overlay,r=>r.fulfill({status:404}));
  await page.reload();
  await expect(page.locator('.overlay')).toHaveCount(0);
@@ -249,4 +273,28 @@ test('failed overlay falls back to the completed page and removes its motion hit
  await motionHit(page).first().click();
  await page.evaluate(()=>window.scrollTo(0,document.body.scrollHeight));
  await expect(page.locator('video')).toHaveCount(0);
+});
+
+
+test('three pages scroll continuously and the corner handle opens the page-three TOC link',async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ await page.goto('/');
+ const pages=page.locator('.reader-page'),handle=page.locator('.sidebar-toggle');
+ await expect(pages).toHaveCount(3);
+ const boxes=await pages.evaluateAll(nodes=>nodes.map(node=>{const r=node.getBoundingClientRect();return {top:r.top,bottom:r.bottom};}));
+ expect(Math.abs(boxes[1].top-boxes[0].bottom)).toBeLessThan(1);
+ expect(Math.abs(boxes[2].top-boxes[1].bottom)).toBeLessThan(1);
+ const box=await handle.boundingBox();
+ expect(box.x).toBeLessThan(25);expect(box.y).toBeGreaterThan(844-80);expect(box.y+box.height).toBeLessThanOrEqual(844);
+ await motionHit(page).first().click();
+ await expect(page.locator('video')).toHaveCount(1);
+ await page.mouse.wheel(0,1000);
+ await expect(page.locator('video')).toHaveCount(0);
+ await handle.click();
+ await page.locator('.toc-list a').nth(2).click();
+ await expect(handle).toHaveAttribute('aria-expanded','false');
+ await expect.poll(()=>pages.nth(2).evaluate(el=>Math.abs(window.scrollY-Math.min(el.getBoundingClientRect().top+window.scrollY,document.documentElement.scrollHeight-window.innerHeight)))).toBeLessThan(2);
+ await motionHit(page).nth(2).click();
+ await expect(page.locator('video')).toHaveCount(1);
+ await expect(page.locator('[id^="motion-demo-page-3-"] video')).toHaveCount(1);
 });
