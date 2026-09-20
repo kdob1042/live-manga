@@ -1,5 +1,7 @@
 # Live Manga 1.0.0 / 2.0.0
 
+このrepoの `live-manga.json` は漫画の公開パッケージ入口です。story-libraryの非公開原稿入口 `works/{workId}/work.json`、manga-macの制作snapshot、production/devの公開catalogとは別契約であり、同じファイルを兼用しません。原稿の本文パス・設定・人物設定はこの配信manifestへ持ち込まず、検証済みの公開assetだけを受け取ります。
+
 正本は `contracts/schema.json`、意味検証は `contracts/validate.mjs`、ファイル検証は `contracts/package.mjs`、TypeScript型は `contracts/types.ts`。
 
 `live-manga.json` と `assets/<SHA256>.<ext>` の自己完結フォルダ。配列順が読書順。versionは形式、releaseIdは不変の刊行版。内部原作commit・Job・秘密は公開manifestに載せない。

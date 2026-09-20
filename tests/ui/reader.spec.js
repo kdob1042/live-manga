@@ -35,7 +35,7 @@ test('switching panels and stale play promises cannot restart old playback',asyn
 
 test('failed overlay selects the completed page and offscreen playback stops',async({page})=>{
  await page.setViewportSize({width:1100,height:500});
- await page.goto('/');const overlay=await page.locator('.overlay').getAttribute('src');await page.route('**'+overlay,r=>r.fulfill({status:404}));await page.reload();await expect(page.locator('.overlay')).toHaveCount(0);await expect(page.getByRole('button',{name:/再生/})).toHaveCount(0);await expect.poll(()=>page.locator('.page img').evaluate(im=>im.complete&&im.naturalWidth>0)).toBe(true);
+ await page.goto('/');const overlay=await page.locator('.overlay').getAttribute('src');await page.route('**'+overlay,r=>r.fulfill({status:404}));await page.reload();await expect(page.locator('.overlay')).toHaveCount(0);await expect(page.getByRole('button',{name:/再生/})).toHaveCount(0);await expect.poll(()=>page.locator('.page img.layer:not(.overlay)').evaluate(im=>im.complete&&im.naturalWidth>0)).toBe(true);
  await page.unroute('**'+overlay);await page.reload();await page.getByRole('button',{name:/再生/}).click();await page.evaluate(()=>window.scrollTo(0,document.body.scrollHeight));await expect(page.locator('video')).toHaveCount(0);
 });
 test('late play resolution is ignored after another panel starts',async({page})=>{
