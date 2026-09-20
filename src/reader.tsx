@@ -22,13 +22,18 @@ const markerStyle=(_panel:Panel,_page:Page)=>({
  top:'6px',
  transform:'translateX(-50%)'
 });
+const MOTION_OVERLAY_PREFERENCE='live-manga.hide-overlay-during-motion';
+const readMotionOverlayPreference=()=>{
+ try{return typeof window!=='undefined'&&window.localStorage.getItem(MOTION_OVERLAY_PREFERENCE)==='true';}
+ catch{return false;}
+};
 const LONG_PRESS_MS=450,MOVE_TOLERANCE=10;
 export function Reader({manifest,base,preview,onRefreshPreview,refreshing=false,catalog,workId,format,episodeId}:{manifest:Manifest;base:string;preview?:Preview;onRefreshPreview?:()=>void;refreshing?:boolean;catalog?:PublicationCatalog;workId?:string;format?:'manga';episodeId?:string}) {
  const [selectedTags,setSelectedTags]=useState<string[]>([]),[tagMode,setTagMode]=useState<'any'|'all'>('any');
  const matched=preview?previewMatches(preview,selectedTags,tagMode):null;
  const visible: Set<string>=new Set<string>(matched?.pageIds??manifest.pages.map(p=>p.id));
  const matchingPanels=new Set(matched?.panelIds??[]);
- const [active,setActive]=useState<string|null>(null),[status,setStatus]=useState(''),[failed,setFailed]=useState<Record<string,boolean>>({}),[modalPanel,setModalPanel]=useState<Panel|null>(null);
+ const [active,setActive]=useState<string|null>(null),[status,setStatus]=useState(''),[failed,setFailed]=useState<Record<string,boolean>>({}),[modalPanel,setModalPanel]=useState<Panel|null>(null),[hideOverlayDuringMotion,setHideOverlayDuringMotion]=useState(readMotionOverlayPreference);
  const [sidebarOpen,setSidebarOpen]=useState(false);
  const generation=useRef(0),current=useRef<HTMLVideoElement|null>(null),timer=useRef<ReturnType<typeof setTimeout>|undefined>(undefined),surface=useRef<HTMLDivElement|null>(null),dialog=useRef<HTMLDialogElement|null>(null),modalHost=useRef<HTMLDivElement|null>(null),longPress=useRef<{timer:ReturnType<typeof setTimeout>;x:number;y:number}|null>(null),suppressClick=useRef(false),lastInput=useRef<'touch'|'mouse'>('mouse'),restoreFocus=useRef<HTMLElement|null>(null),sidebarToggle=useRef<HTMLButtonElement|null>(null);
  const assets=new Map(manifest.assets.map(a=>[a.id,a]));const url=(id:string)=>base+assets.get(id)!.path;
@@ -74,8 +79,12 @@ export function Reader({manifest,base,preview,onRefreshPreview,refreshing=false,
   play(panel);
  }
  function closeSidebar(){setSidebarOpen(false);requestAnimationFrame(()=>sidebarToggle.current?.focus());}
+ function changeHideOverlayDuringMotion(value:boolean){
+  setHideOverlayDuringMotion(value);
+  try{window.localStorage.setItem(MOTION_OVERLAY_PREFERENCE,String(value));}catch{}
+ }
  return <div className={`reader-shell${sidebarOpen?' sidebar-open':''}`}>
-  <ReaderSidebar manifest={manifest} preview={preview} pages={manifest.pages} visiblePageIds={visible} selectedTags={selectedTags} tagMode={tagMode} open={sidebarOpen} refreshing={refreshing} onClose={closeSidebar} onTagsChange={(tags,mode)=>{stop();setSelectedTags(tags);setTagMode(mode);}} onRefresh={onRefreshPreview} catalog={catalog} currentWorkId={workId} currentFormat={format} currentEpisodeId={episodeId}/>
+  <ReaderSidebar manifest={manifest} preview={preview} pages={manifest.pages} visiblePageIds={visible} selectedTags={selectedTags} tagMode={tagMode} open={sidebarOpen} hideOverlayDuringMotion={hideOverlayDuringMotion} refreshing={refreshing} onClose={closeSidebar} onHideOverlayDuringMotionChange={changeHideOverlayDuringMotion} onTagsChange={(tags,mode)=>{stop();setSelectedTags(tags);setTagMode(mode);}} onRefresh={onRefreshPreview} catalog={catalog} currentWorkId={workId} currentFormat={format} currentEpisodeId={episodeId}/>
   <button ref={sidebarToggle} className={`sidebar-toggle${sidebarOpen?' is-open':''}`} type="button" aria-expanded={sidebarOpen} aria-controls="reader-sidebar" aria-label={sidebarOpen?'読書メニューを閉じる':'読書メニューを開く'} onClick={()=>setSidebarOpen(value=>!value)}><span aria-hidden="true">{sidebarOpen?'›':'‹'}</span></button>
   <main className="reader-main">
    <div className="reader-status" role="status" aria-live="polite">{status}</div>
@@ -84,7 +93,7 @@ export function Reader({manifest,base,preview,onRefreshPreview,refreshing=false,
     <div className="page" style={{aspectRatio:`${page.width}/${page.height}`}}>
      <img className="layer" src={url(failed[page.id]?page.fallback:page.art)} width={page.width} height={page.height} alt={`${index+1}ページの漫画。本文は読書メニュー内の「テキストで読む」にあります。`} onError={()=>{stop();setFailed(f=>({...f,[page.id]:true}));}}/>
      {!failed[page.id]&&page.panels.filter(p=>p.motion).map(panel=><React.Fragment key={panel.id}><div className={`motion${panel.clip?' motion-clip':''}`} style={{...placement(surfaceRect(panel),page),...clipStyle(panel)}}><div className="motion-media" id={`motion-${panel.id}`} style={panel.clip?relative(panel.artRect,panel.frame):undefined}/></div><div className="panel-actions" style={placement(actionRect(panel),page)}><button className="panel-hit-area" style={hitAreaStyle(panel)} aria-label={`${panelLabel(panel)} ${active===panel.id?'再生中。PCはもう一度クリック、スマホは長押しで拡大':'タップでコマ内再生。スマホは長押しで拡大'}`} aria-pressed={active===panel.id} onPointerDown={e=>beginLongPress(e,panel)} onPointerMove={moveLongPress} onPointerUp={e=>{if(e.pointerType==='touch')cancelLongPress();}} onPointerCancel={cancelLongPress} onPointerLeave={e=>{if(e.pointerType==='touch')cancelLongPress();}} onContextMenu={e=>e.preventDefault()} onClick={e=>activate(panel,e.currentTarget,e)}><span className="sr-only">動きのあるコマ</span></button><span className={`motion-marker ${active===panel.id?'is-active':''}`} style={markerStyle(panel,page)} aria-hidden="true"/></div></React.Fragment>)}
-     {!failed[page.id]&&<img className="layer overlay" src={url(page.overlay)} width={page.width} height={page.height} alt="" onError={()=>{stop();setFailed(f=>({...f,[page.id]:true}));}}/>}
+     {!failed[page.id]&&<img className={`layer overlay${hideOverlayDuringMotion&&page.panels.some(panel=>panel.id===active)?' overlay-hidden-during-motion':''}`} src={url(page.overlay)} width={page.width} height={page.height} alt="" onError={()=>{stop();setFailed(f=>({...f,[page.id]:true}));}}/>}
      <span className="folio" aria-hidden="true">{String(index+1).padStart(2,'0')}</span>
      {preview&&<div className="preview-page-status">{!!selectedTags.length&&<p>該当シーンのコマ: {page.panels.map((p,i)=>matchingPanels.has(p.id)?i+1:null).filter(Boolean).join('、')}</p>}{page.panels.map((panel,panelIndex)=>{const state=preview.panels.find(p=>p.id===panel.id);if(!state)return null;const notes=[state.art==='pending'?'作画待ち':'',state.lettering==='pending'?'文字配置待ち':'',state.motion==='stale'?'動画は旧版のため静止表示':state.motion==='pending'?'動画待ち':''].filter(Boolean);return notes.length?<p key={panel.id}>{panelIndex+1}コマ目: {notes.join('・')}</p>:null;})}</div>}
     </div>
@@ -127,4 +136,3 @@ async function start() {
  } catch(error){root.render(<main role="alert"><h1>作品を開けませんでした</h1><p>{error instanceof Error ? error.message : String(error)}</p><a href="/">作品一覧へ戻る</a></main>);}
 }
 start();
-

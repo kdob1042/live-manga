@@ -31,6 +31,27 @@ test('shared reader shell puts work navigation in a collapsible sidebar',async({
  await expect(page.locator('.reader-shell')).not.toHaveClass(/sidebar-open/);
 });
 
+test('reader setting hides the page overlay only during in-panel playback and persists',async({page})=>{
+ await page.goto('/');
+ const overlay=page.locator('.overlay').first();
+ await page.locator('.sidebar-toggle').click();
+ const setting=page.getByRole('checkbox',{name:'動画再生中は吹き出し・文字・枠を隠す'});
+ await expect(setting).toBeVisible();
+ await expect(setting).not.toBeChecked();
+ await setting.check();
+ await page.locator('.sidebar-toggle').click();
+ await expect(overlay).not.toHaveClass(/overlay-hidden-during-motion/);
+ await motionHit(page).first().click();
+ await expect(page.locator('video')).toBeVisible();
+ await expect(overlay).toHaveClass(/overlay-hidden-during-motion/);
+ await page.locator('.sidebar-toggle').click();
+ await expect(page.locator('video')).toHaveCount(0);
+ await expect(overlay).not.toHaveClass(/overlay-hidden-during-motion/);
+ await page.reload();
+ await page.locator('.sidebar-toggle').click();
+ await expect(page.getByRole('checkbox',{name:'動画再生中は吹き出し・文字・枠を隠す'})).toBeChecked();
+});
+
 test('motion panels expose only a subtle marker and the full panel is clickable',async({page})=>{
  await page.goto('/');
  await expect(page.locator('.panel-control,.expand-control')).toHaveCount(0);
