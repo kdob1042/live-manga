@@ -1,18 +1,11 @@
 # Development
 
-Read README.md, docs/FORMAT.md, docs/DEPLOY.md, and the current issues first.
-Start from latest dev, create a feature branch, open a PR to dev. Never push directly to dev/main or weaken protection. Promote dev to main only after required CI succeeds. Production deployment is a separate configured Cloudflare Git build after main.
+Read [README](README.md), then the relevant row in [DEVELOPMENT](docs/DEVELOPMENT.md). Read only the applicable contract/deployment sections and current Issue/PR before changing code.
 
-contracts/ is the sole distribution contract. manga-mac vendors a commit + SHA256 pinned copy via its sync script. Do not add generation, Blender, project databases, credentials, or unpublished source to the reader.
+- Start from latest dev and reuse the Draft PR created by an exact `/start` Issue comment. Target dev; never directly push to dev/main or weaken protection.
+- `contracts/` is the sole distribution contract. manga-mac consumes a pinned copy; do not edit a vendor copy or introduce manuscript/generation/database/credential data into the reader.
+- [DEVELOPMENT](docs/DEVELOPMENT.md) owns the code/configuration map and validation commands. [PROJECT_AUTOMATION](docs/PROJECT_AUTOMATION.md) owns Issue/PR state, completion references and failure recovery. Do not manually maintain `status:*` or `agent:start`, or close Issues through Project Done.
+- Keep an independent `Refs #number` line in PRs. Use `Closes #number` only for all acceptance criteria; partial work requires a follow-up Issue with `Parent: #number` before merging. Unverified criteria stay open.
+- Mark ready only after required checks pass. Separate automated Chromium/WebKit, real devices and production deployment. Never present artificial fixtures as AI-generated artwork.
 
-Run npm ci, npm run lint, npm run typecheck, npm test, npm run build, npm run test:ui. Fixture generation needs FFmpeg/ffprobe, Python/Pillow and DejaVu Sans. Node 22+.
-Report automated Chromium/WebKit results separately from real iPhone/Android and production deployment. Never label artificial fixtures as AI-generated artwork. Keep unverified conditions open in the issues.
-
-
-## Issue/PR task state
-
-- Issue open/closed and PRs are the source of truth; Project is a derived view. Do not add or manually maintain status:* labels.
-- Before implementation, the agent comments exactly /start on the Issue. Actions adds its internal marker, creates an empty-commit Draft PR from latest dev, or reuses the existing PR. Wait for it and implement on that branch; do not add agent:start manually or create a duplicate PR.
-- New Issue → Todo; open PR (including Draft) → In Progress; current CI failure, change request, or unfinished Issue without an open replacement PR → Needs attention; closed Issue → Done. Ready for review stays In Progress.
-- Put Refs #<number> on its own line. Only change to Closes #<number> when ALL acceptance criteria are met. For partial work, create a follow-up Issue first and put `Parent: #<number>` on its own line in that Issue. The synchronizer closes the parent after the Refs PR merges and the follow-up exists; without that Issue, the parent remains open and needs attention.
-- Mark the PR ready only after required checks and acceptance criteria pass. Preserve the dev-first, PR-based workflow. Do not use Project Done to close Issues in reverse; see docs/PROJECT_AUTOMATION.md for recovery.
+Keep rules and settings in their declared source of truth; link instead of copying them into additional agent files.

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useMemo} from 'react';
 import type {Manifest, Page} from '../contracts/types';
 import type {Preview} from '../contracts/preview-types';
 import PreviewControls from './PreviewControls';
@@ -25,9 +25,9 @@ type Props = {
 
 const pageLabel = (page: Page, index: number) => `${String(index + 1).padStart(2, '0')}ページ`;
 
-function pageNotes(preview: Preview, page: Page) {
+function pageNotes(panels: Map<string, Preview['panels'][number]>, page: Page) {
   return page.panels.flatMap(panel => {
-    const state = preview.panels.find(item => item.id === panel.id);
+    const state = panels.get(panel.id);
     if (!state) return [];
     const notes = [
       state.art === 'pending' ? '作画待ち' : '',
@@ -42,6 +42,7 @@ export default function ReaderSidebar({
   manifest, preview, pages, visiblePageIds, selectedTags, tagMode, open,
   refreshing, onClose, onTagsChange, onRefresh, catalog, currentWorkId, currentFormat, currentEpisodeId,
 }: Props) {
+  const previewPanels = useMemo(() => new Map(preview?.panels.map(p => [p.id, p]) ?? []), [preview]);
   const tocPages = pages
     .map((page, index) => ({page, index}))
     .filter(({page}) => visiblePageIds.has(page.id));
@@ -77,7 +78,7 @@ export default function ReaderSidebar({
           <p id="reader-toc-heading" className="sidebar-section-label">目次</p>
           <nav aria-label="ページ一覧" className="toc-list">
             {tocPages.map(({page, index}) => {
-              const notes = preview ? pageNotes(preview, page) : [];
+              const notes = preview ? pageNotes(previewPanels, page) : [];
               return <a key={page.id} href={`#page-${page.id}`} onClick={onClose}>
                 <span>{pageLabel(page, index)}</span>
                 <small>{page.panels.length}コマ{notes.length ? ` · ${[...new Set(notes)].join('・')}` : ''}</small>

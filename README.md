@@ -19,7 +19,7 @@ npm run dev
 - 作品URLは `/?release=刊行版ID`。刊行版は不変。未指定は公開カタログのcurrent、未刊行環境は人工サンプル。
 - スマホ幅に追従し、ブラウザのズームを制限しない。
 
-検証: `npm run lint`、`npm run typecheck`、`npm test`、`npm run build`、`npx playwright install --with-deps chromium webkit`、`npm run test:ui`。
+コードの責務・設定・検証コマンドは [開発案内](docs/DEVELOPMENT.md) を参照。
 
 [作品形式](docs/FORMAT.md) · [公開手順](docs/DEPLOY.md) · [検証記録](docs/VALIDATION.md)
 
