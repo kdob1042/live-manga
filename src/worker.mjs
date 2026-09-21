@@ -13,6 +13,7 @@ export {parseRange};
 
 const ID = /^[a-zA-Z0-9:_-]{1,128}$/;
 const RELEASE_PATH = /^\/releases\/([a-zA-Z0-9:_-]{1,128})\/(live-manga\.json|assets\/[a-f0-9]{64}\.(?:png|jpg|webp|mp4))$/;
+const manifestCache = new Map();
 
 function json(value, status = 200, cache = 'no-store') {
   return new Response(JSON.stringify(value), {
@@ -53,45 +54,94 @@ async function serveApp(request, env) {
 }
 
 async function readMangaManifest(env, entry) {
+  const cacheKey = `publication:${entry.releaseId}:${entry.workId}:${entry.episodeId}`;
+  const cached = manifestCache.get(cacheKey);
+  if (cached) return cached;
   const key = `releases/${entry.releaseId}/live-manga.json`;
   const object = await env.MEDIA.get(key);
   if (!object || object.size > 4 * 1024 * 1024) return null;
   try {
     const manifest = validate(await object.json());
     if (manifest.releaseId !== entry.releaseId || manifest.workId !== entry.workId || manifest.episodeId !== entry.episodeId) return null;
-    return {manifest, key};
+    const loaded = {manifest, key};
+    manifestCache.set(cacheKey, loaded);
+    return loaded;
+  } catch {
+    return null;
+  }
+}
+
+async function readLegacyManifest(env, release) {
+  const cacheKey = `legacy:${release}`;
+  const cached = manifestCache.get(cacheKey);
+  if (cached) return cached;
+  const key = `releases/${release}/live-manga.json`;
+  const object = await env.MEDIA.get(key);
+  if (!object || object.size > 4 * 1024 * 1024) return null;
+  try {
+    const manifest = validate(await object.json());
+    if (manifest.releaseId !== release) return null;
+    manifestCache.set(cacheKey, manifest);
+    return manifest;
   } catch {
     return null;
   }
 }
 
 async function serveR2Asset(request, env, key, asset, cache = 'public, max-age=3600') {
-  const head = await env.MEDIA.head(key);
-  if (!head || asset && head.size !== asset.bytes) return new Response(null, {status: 404});
+  const rangeHeader = request.headers.get('Range');
+  const ifRange = request.headers.get('If-Range');
+  let head = null;
+
+  // HEAD and If-Range need metadata before the body decision. Normal GET/range
+  // requests can use immutable manifest metadata and go straight to one R2 get().
+  if (request.method === 'HEAD' || !asset || (rangeHeader && ifRange)) {
+    head = await env.MEDIA.head(key);
+    if (!head || asset && head.size !== asset.bytes) return new Response(null, {status: 404});
+  }
+
+  const size = asset?.bytes ?? head?.size;
+  let range = null;
+  if (request.method === 'GET' && rangeHeader && (!ifRange || ifRange === head?.httpEtag)) {
+    range = parseRange(rangeHeader, size);
+    if (!range) return new Response(null, {status: 416, headers: {'Content-Range': `bytes */${size}`}});
+  }
+
+  if (request.method === 'HEAD') {
+    const headers = new Headers({
+      'Content-Type': asset?.mime || head.httpMetadata?.contentType || 'application/octet-stream',
+      'Content-Length': String(size),
+      'ETag': head.httpEtag,
+      'Accept-Ranges': 'bytes',
+      'Cache-Control': cache,
+      'X-Content-Type-Options': 'nosniff',
+    });
+    const match = request.headers.get('If-None-Match');
+    if (match && (match === '*' || match.split(',').map(value => value.trim().replace(/^W\//, '')).includes(head.httpEtag))) {
+      return new Response(null, {status: 304, headers});
+    }
+    return new Response(null, {headers});
+  }
+
+  const object = await env.MEDIA.get(key, range ? {range} : undefined);
+  if (!object || !object.body) return new Response(null, {status: 404});
+  if (asset && Number.isFinite(object.size) && object.size !== asset.bytes) return new Response(null, {status: 404});
+
+  const etag = object.httpEtag || head?.httpEtag;
   const headers = new Headers({
-    'Content-Type': asset?.mime || head.httpMetadata?.contentType || 'application/octet-stream',
-    'Content-Length': String(head.size),
-    'ETag': head.httpEtag,
+    'Content-Type': asset?.mime || object.httpMetadata?.contentType || 'application/octet-stream',
+    'Content-Length': String(range ? range.length : size),
     'Accept-Ranges': 'bytes',
     'Cache-Control': cache,
     'X-Content-Type-Options': 'nosniff',
   });
+  if (etag) headers.set('ETag', etag);
+  if (range) headers.set('Content-Range', `bytes ${range.offset}-${range.offset + range.length - 1}/${size}`);
+
   const match = request.headers.get('If-None-Match');
-  if (match && (match === '*' || match.split(',').map(value => value.trim().replace(/^W\//, '')).includes(head.httpEtag))) {
+  if (etag && match && (match === '*' || match.split(',').map(value => value.trim().replace(/^W\//, '')).includes(etag))) {
     return new Response(null, {status: 304, headers});
   }
-  let range = null;
-  const value = request.headers.get('Range');
-  const ifRange = request.headers.get('If-Range');
-  if (request.method === 'GET' && value && (!ifRange || ifRange === head.httpEtag)) {
-    range = parseRange(value, head.size);
-    if (!range) return new Response(null, {status: 416, headers: {'Content-Range': `bytes */${head.size}`} });
-    headers.set('Content-Range', `bytes ${range.offset}-${range.offset + range.length - 1}/${head.size}`);
-    headers.set('Content-Length', String(range.length));
-  }
-  if (request.method === 'HEAD') return new Response(null, {headers});
-  const object = await env.MEDIA.get(key, {...(range ? {range} : {}), onlyIf: {etagMatches: head.etag}});
-  if (!object || !object.body) return new Response(null, {status: 503});
   return new Response(object.body, {status: range ? 206 : 200, headers});
 }
 
@@ -140,10 +190,8 @@ async function legacyRelease(request, env, release, resource) {
   try { catalog = await catalogObject.json(); } catch { return new Response(null, {status: 502}); }
   if (!Array.isArray(catalog.releases) || !catalog.releases.includes(release)) return new Response(null, {status: 404});
   const prefix = `releases/${release}/`;
-  const manifestObject = await env.MEDIA.get(prefix + 'live-manga.json');
-  if (!manifestObject || manifestObject.size > 4 * 1024 * 1024) return new Response(null, {status: 404});
-  let manifest;
-  try { manifest = validate(await manifestObject.json()); if (manifest.releaseId !== release) throw Error(); } catch { return new Response(null, {status: 502}); }
+  const manifest = await readLegacyManifest(env, release);
+  if (!manifest) return new Response(null, {status: 502});
   if (resource === 'live-manga.json') return json(manifest, 200, 'public, max-age=3600');
   const asset = manifest.assets.find(item => item.path === resource);
   if (!asset) return new Response(null, {status: 404});
