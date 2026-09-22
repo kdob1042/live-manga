@@ -2,7 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {validate,VERSION} from '../contracts/validate.mjs';
-const legacy=JSON.parse(await readFile('public/demo/live-manga.json'));
+const legacy=JSON.parse(await readFile('contracts/fixture-assets.json')).manifest;
 function v2(){const m=structuredClone(legacy);m.schemaVersion=VERSION;for(const p of m.pages[0].panels){const {x,y,width:w,height:h}=p.frame;p.clip=[[x,y],[x+w,y],[x+w,y+h],[x,y+h]];}return m;}
 test('v1 remains valid; v2 supports a slanted crop extending beyond the page',()=>{
  validate(legacy);const m=v2(),p=m.pages[0].panels[0],f=p.frame;

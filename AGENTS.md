@@ -1,11 +1,12 @@
-# Development
+# 開発の入口
 
-Read [README](README.md), then the relevant row in [DEVELOPMENT](docs/DEVELOPMENT.md). Read only the applicable contract/deployment sections and current Issue/PR before changing code.
+1. [README](README.md)で操作と役割を確認する。
+2. [開発案内](docs/DEVELOPMENT.md)の担当箇所と、作業対象のIssue・PRを読む。契約・公開設定は変更する場合だけ読む。
+3. 最新devを取り込み、Issueの`/start`で作成された既存Draft PRで作業する。PRはdev向け。dev/mainへ直接pushせず、保護設定を弱めない。
 
-- Start from latest dev and reuse the Draft PR created by an exact `/start` Issue comment. Target dev; never directly push to dev/main or weaken protection.
-- `contracts/` is the sole distribution contract. manga-mac consumes a pinned copy; do not edit a vendor copy or introduce manuscript/generation/database/credential data into the reader.
-- [DEVELOPMENT](docs/DEVELOPMENT.md) owns the code/configuration map and validation commands. [PROJECT_AUTOMATION](docs/PROJECT_AUTOMATION.md) owns Issue/PR state, completion references and failure recovery. Do not manually maintain `status:*` or `agent:start`, or close Issues through Project Done.
-- Keep an independent `Refs #number` line in PRs. Use `Closes #number` only for all acceptance criteria; partial work requires a follow-up Issue with `Parent: #number` before merging. Unverified criteria stay open.
-- Mark ready only after required checks pass. Separate automated Chromium/WebKit, real devices and production deployment. Never present artificial fixtures as AI-generated artwork.
+- 配信契約の正本は`contracts/`。manga-macは固定版を取り込む。原稿、生成処理、制作DB、認証情報を読者アプリへ持ち込まない。
+- Issue/PRの開始・完了・復旧は[Project自動同期](docs/PROJECT_AUTOMATION.md)に従う。`status:*`や`agent:start`を手動管理しない。
+- PR本文に独立した`Refs #番号`行を置く。全受入条件を満たした場合だけ`Closes #番号`にする。部分完了は`Parent: #番号`付きの残件Issueを先に作る。
+- 必須検証が通ってからreadyにする。自動ブラウザ試験、実機、本番配信の結果は分ける。人工サンプルをAI生成作品や実作品の検証実績と呼ばない。
 
-Keep rules and settings in their declared source of truth; link instead of copying them into additional agent files.
+説明と設定は担当ファイルに一度だけ書き、他の指示書からはリンクする。

@@ -1,79 +1,92 @@
-# Cloudflareへの公開
+# 公開・転送手順
 
-この変更にはCloudflare account・bucket・公開URLを含めていない。実際の設定値を推測しない。
+漫画制作はmanga-mac、閲覧はlive-mangaが担当する。アプリ本体のデプロイ、完成版の刊行、制作途中の転送は別の操作。実際のアカウント・認証情報・URLを推測しない。
 
-## Web本体
+## アプリ本体
 
-既存方針に合わせ、Cloudflare WorkersのGit連携を唯一の本番デプロイ経路にする。接続repoはlive-manga、production branchはmain。Build commandは `npm ci && npm run build`、production deploy commandは `npx wrangler deploy`。ビルドは検証済みの小さな人工fixtureを復元するためNodeだけで実行できる。FFmpeg/Pillowはfixture再生成と実体検証時のみ必要。設定後、main CI成功・対応commit・公開URL・実配信rangeを確認する。
+Cloudflare WorkersのGit連携を本番デプロイの唯一の経路とする。
 
-## production / dev の公開制御
+| 設定 | 値 |
+| --- | --- |
+| リポジトリ／本番ブランチ | `live-manga`／`main` |
+| Build command | `npm ci && npm run build` |
+| Production deploy command | `npx wrangler deploy` |
+| Non-production builds | 有効 |
+| Non-production deploy command | `npx wrangler versions upload --config wrangler.dev.jsonc` |
 
-`wrangler.jsonc` はproduction専用、`wrangler.dev.jsonc` はdev専用とする。2つの設定はWorker名、R2 bucket、公開カタログキーを分け、同じ作品の制作確認がproductionの公開データを参照しないようにする。
+非本番設定はDashboardの`Settings > Build > Branch control`で行う。作業ブランチにも一時Previewができるが、継続確認はdevの最新ビルドを使う。mainの本番URLやAccessをPreview用に変更しない。通常ビルドはNodeだけで動く。反映後はmain CI、対象commit、URL、実配信Rangeを確認する。
 
-- production: main → `live-manga` → 既存の非公開 `live-manga-media-prod` → `publication/catalog.json`
-- dev: dev → `live-manga-dev` → 別途作成する非公開 `live-manga-media-dev` → `publication/catalog.dev.json`
-- devのpreview uploadは必ず `wrangler.dev.jsonc` を明示し、productionのR2 binding・catalog keyへ誤送信しない。
-- 両環境とも `/works/*` と `/catalog.json` を `run_worker_first` に含める。これを外すと静的AssetがWorkerの公開ゲートを迂回する。
-- devは `DEV_AUTH_REQUIRED=true` のままにし、Cloudflare Accessもdev WorkerのURLに別途関連付ける。
-- productionの `REQUIRE_PUBLICATION_CATALOG` は、検証済みのproduction catalogを配置するまで `false` のままにできる。切替手順ではcatalogの内容・R2 prefix・URL直アクセスを確認した後に `true` へ変更する。`true` にした後は、catalogが無い場合も旧legacy経路へフォールバックしない。
+## 環境と認証の所有者
 
-`live-manga-media-dev` の作成、両Workerのデプロイ先、Access Application / Policy、custom domain、production切替の承認は人間がCloudflare Dashboardで設定する。リポジトリへaccount ID、token、Access設定、実際のドメインは保存しない。
+| 環境 | 設定 | Worker | 非公開R2 | Catalog |
+| --- | --- | --- | --- | --- |
+| production | `wrangler.jsonc` | `live-manga` | `live-manga-media-prod` | `publication/catalog.json` |
+| dev | `wrangler.dev.jsonc` | `live-manga-dev` | `live-manga-media-dev` | `publication/catalog.dev.json` |
 
-### devブランチのPreview
+- devのuploadには必ず`--config wrangler.dev.jsonc`を付ける。devに本番のR2書込み権限・秘密・送信先を渡さない。
+- 両環境の`run_worker_first`に`/works/*`と`/catalog.json`を残し、静的配信による公開判定の迂回を防ぐ。
+- devの`DEV_AUTH_REQUIRED=true`を維持する。productionの`REQUIRE_PUBLICATION_CATALOG`は、検証済みcatalog、R2 prefix、直URLを確認してから`true`へ切り替える。以後はcatalog欠落時もlegacyへ戻らない。
+- `workers_dev: true`を維持し、`route`/`routes`を追加しない。falseで再デプロイすると既存のworkers.dev URLが消える。
+- Access Application/PolicyはDashboardが所有する。各Workerのworkers.dev URLとPreview URLsにApplication・Allowポリシーを関連付ける。ポリシー作成だけでは保護されない。
+- R2の公開Development URL・Custom Domainは無効。作品はWorkerの同一origin経由で配信する。
 
-`dev`を確認用Previewの基準ブランチにする。本番の`main`やAccessで保護された本番URLをPreview設定から変更しない。
+dev bucket作成、Workerの宛先、Access、ドメイン、本番切替の承認は人間がDashboardで設定する。account ID、token、実ドメイン、Access設定をリポジトリへ保存しない。公開経路の変更は通常の開発PRと分けた運用変更とする。`npm run verify:deploy-config`は設定ファイルの分離を検査するが、実アカウントの設定確認は別途必要。
 
-Cloudflare Dashboardの対象Workerで、`Settings > Build > Branch control`を次のように設定する。
+## 完成版を刊行する
 
-- Git branch（production branch）: `main`
-- Builds for non-production branches: 有効
-- Non-production branch deploy command: `npx wrangler versions upload --config wrangler.dev.jsonc`
-
-これにより、`dev`へpushするたびにCloudflareがPreview versionを作成する。Cloudflareのこの設定は全非本番ブランチが対象なので、作業ブランチにも一時Previewが生成されるが、継続的に確認する基準URLは`dev`の最新ビルドとする。`main`へのpushだけが本番`npx wrangler deploy`を実行する。
-
-このプロジェクトのPreviewも限定公開で運用するため、Access Applicationで本番の`workers.dev` URLだけでなくPreview URLsも保護対象に含める。Accessのポリシーを作成しただけでは対象Applicationに適用されないため、対象WorkerのPreview URLへの関連付けをDashboardで確認する。Previewに本番R2の書込権限や秘密を追加しない。実データを使う場合は、本番と同じMEDIA bindingを不用意にPreviewへ公開しない運用確認を先に行う。
-
-## 公開経路とCloudflare Accessの所有者
-
-このWorkerは、**Accessで保護した `workers.dev` URL** を公開経路として使う前提で運用する。Cloudflare公式仕様では、`workers_dev: false` を含めて再デプロイすると `workers.dev` ルートが無効になるため、このリポジトリでは `workers_dev: true` を固定する。
-
-- `workers_dev: true` を維持する。これでURLが存在し、Cloudflare Access Applicationが認証を要求する。
-- `workers_dev: false` に変更しない。次回デプロイで公開URLが消える。
-- `wrangler.jsonc` に `routes` または `route` を追加しない。Workersの公開URLはworkers.dev、認証・許可はCloudflare Dashboard側のAccess Application/Policyの所有物とする。
-- このリポジトリにはAccessのポリシー、API token、カスタムドメインを保存しない。
-- Dashboardでは、対象Workerの `workers.dev` URLにAccess Applicationを関連付け、Allowポリシーを設定する。ポリシーを作成しただけではアプリケーション保護は成立しない。
-- CIの `npm run verify:deploy-config` が、`workers_dev`、ルート宣言、非公開MEDIA bindingの変更を検査する。アクセス経路を変更するときは、このリポジトリの通常開発PRとは別の運用変更として扱う。
-
-R2の公開Development URLとCustom Domainは無効のままにする。作品ファイルはWorkerの同一origin経由で配信し、R2を直接公開しない。
-
-## 完成作品の刊行
-
-Node 22+、FFmpeg/ffprobeを導入した作者環境で、manga-macが書き出したフォルダを指定する。
+Node 22+とFFmpeg/ffprobeを導入した作者環境で、manga-macの書出しフォルダを指定する。
 
 ```sh
 node scripts/publish.mjs /path/to/package RELEASE_ID
-# 上でファイル一覧・容量を確認した同じ刊行版だけを転送する
+# 一覧と容量を確認した同じ版を送る
 node scripts/publish.mjs /path/to/package RELEASE_ID --apply
 ```
 
-送信時だけ環境変数 `R2_ACCOUNT_ID`, `R2_BUCKET`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` を設定。専用bucketに限定したR2 S3 credentialsを使い、ブラウザ・Git・作品には保存しない。
+送信時だけ`R2_ACCOUNT_ID`、`R2_BUCKET`、`AWS_ACCESS_KEY_ID`、`AWS_SECRET_ACCESS_KEY`を設定する。資格情報は専用bucketに限定し、ブラウザ・Git・作品へ保存しない。
 
-CLIは全実体検証→ファイルと容量のdry-run→If-None-Matchによる不変upload→全実体をstreamで読み戻してhash照合→最後にETag条件付きcatalog更新。通信失敗や同時刊行の競合は成功扱いせず、旧カタログを保持する。失敗した未公開prefixは自動削除しない。同じ版の再実行は既存内容が完全一致する場合だけ継続する。
+処理順は実体検証 → dry-run → 不変upload（If-None-Match）→ 全ファイルの読戻し・hash照合 → catalog更新（ETag条件付き）。失敗・競合時は旧catalogを保持し、未公開prefixを自動削除しない。同じ版の再実行は既存内容が完全一致する場合だけ継続する。
 
 ```sh
 node scripts/publish.mjs --rollback PREVIOUS_RELEASE_ID --apply
 ```
 
-旧刊行版へのcatalog.current参照を戻す。旧URLは維持し、読書中の版は切り替えない。未指定URLはcatalog.currentを開く。各読者は読み始めたreleaseIdへ固定し、閲覧中に版を切り替えない。作品は公開すると読者が取得可能。秘密情報・非公開原稿を公開しない。
+rollbackは`catalog.current`だけを旧版へ戻す。旧URLと読書中の版は維持する。legacy URLは`/?release=RELEASE_ID`、未指定は`catalog.current`。公開作品には非公開原稿・秘密を含めない。
 
-HTTP実装の根拠: [R2 Workers API](https://developers.cloudflare.com/r2/api/workers/workers-api-reference/)、[R2 S3条件付き操作](https://developers.cloudflare.com/r2/api/s3/api/)。本番接続試験は別途必要。
+## 制作途中を非公開で転送する
 
-## 非公開の制作途中転送（Issue #22）
+### 初回設定
 
-保存は非公開のMEDIA R2 binding。releases/とpreviews/<workId>/<episodeId>/を分離し、R2直公開（r2.dev/カスタムドメイン）が無いことを確認してからPREVIEWS_PRIVATE='true'を設定する。この変数だけでバケットの公開状態を検査した扱いにはしない。既存刊行物を無断で非公開化・移行しない。未設定なら受信・配信とも503。
+`releases/`と`previews/<workId>/<episodeId>/`を分離する。R2直公開が無いことを実際に確認してから`PREVIEWS_PRIVATE='true'`を設定する。未設定は受信・配信とも503。既存刊行物を無断で移行・非公開化しない。
 
-Worker secret PREVIEW_KEYSはJSON配列。各項目はsha256（ランダムな43文字以上のbase64urlキーのSHA256）、workId、episodeId、permissions（readまたはwrite）、expiresAt（ISO日時）、revoked（任意）。鍵生成はOSの安全な乱数を使い、生キーはGit/作品/ログへ置かない。制作アプリにはwriteだけのキー、ビューワーには別のreadだけのキーを設定する。readキーは最初の閲覧時に入力し、/preview-sessionがHttpOnly/Secure/SameSite=Strict Cookieへ交換する。全GET/HEAD/Rangeで権限・期限・失効を再検査する。PREVIEW_KEYSからの削除またはrevoked=trueで以後の取得を停止する。取得済み画像の回収は保証しない。
+Worker secret `PREVIEW_KEYS`は次のJSON配列。制作アプリにはwrite専用、閲覧側には別のread専用キーを渡す。
 
-転送API: PUT /previews/w/e/transfers/t に {preview,baseRevision}、同path/assets/hash.extへContent-TypeとContent-Length付きのバイナリPUT、同path/commitへPOST。tは内manifest.releaseIdと同一。各要求にwrite Bearerを付ける。GET同pathでreceived/missing/committed/current/viewerUrlを照会して再開する。assetはR2のsha256/サイズ検証と不変条件付きput、最後にETag比較付きcurrent.json更新。複数オブジェクトを一括transactionとみなさない。codec・実寸法のprobeは既存の制作側native検証が担当し、Workerだけでffprobeを実行したとは扱わない。
+| 項目 | 内容 |
+| --- | --- |
+| `sha256` | 43文字以上のランダムbase64urlキーのSHA256 |
+| `workId`、`episodeId` | 対象作品・話 |
+| `permissions` | readまたはwrite |
+| `expiresAt` | ISO日時 |
+| `revoked` | 失効指定（任意） |
 
-閲覧は /?preview=w%2Fe&revision=t。版未指定はcurrentを一度取得し、読書中に自動更新しない。「最新版を開く」で明示更新。タグ切替・解除はPOST/再転送なし。全privateレスポンスはno-store、認可前の公開cacheを使わない。旧版の保存期限は未指定のため自動削除を追加していない。実R2/アカウント設定はローカル・fixture試験とは別に確認する。
+OSの安全な乱数で生成し、生キーをGit・作品・ログへ残さない。readキーは`/preview-session`でHttpOnly/Secure/SameSite=Strict Cookieへ交換する。全GET/HEAD/Rangeで権限・期限・失効を確認する。削除または`revoked=true`で以後の取得を止められるが、取得済み画像は回収できない。
+
+### 転送API
+
+`P=/previews/w/e/transfers/t`。`t`はmanifestのreleaseIdと同じで、各要求にwrite Bearerを付ける。
+
+| 操作 | 要求 |
+| --- | --- |
+| 開始 | `PUT P`に`{preview,baseRevision}` |
+| ファイル転送 | `PUT P/assets/hash.ext`に実体、Content-Type、Content-Length |
+| 確定 | `POST P/commit` |
+| 再開状況 | `GET P`でreceived/missing/committed/current/viewerUrlを確認 |
+
+assetはsha256・サイズ照合と不変put、最後にETag比較付きでcurrent.jsonを更新する。一括transactionではない。codec・実寸法のprobeは制作側native検証が担当する。
+
+### 閲覧・更新
+
+URLは`/?preview=w%2Fe&revision=t`。版未指定はcurrentを一度だけ取得し、「最新版を開く」で明示更新する。タグ切替には再転送・POST不要。private応答はno-storeとし、認可前の公開cacheを使わない。保存期限は未指定のため旧版を自動削除しない。
+
+実R2・認証・配信の確認は、ローカルや人工サンプルの試験と分ける。
+
+HTTP仕様: [R2 Workers API](https://developers.cloudflare.com/r2/api/workers/workers-api-reference/) · [R2 S3条件付き操作](https://developers.cloudflare.com/r2/api/s3/api/)

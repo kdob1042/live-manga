@@ -1,40 +1,42 @@
-# Development map
+# 開発案内
 
-The reader consumes published packages. It does not own source manuscripts, generation jobs, Blender, or the production database.
+live-mangaは漫画の読者アプリ。原稿はstory-library、制作はmanga-macが担当する。
 
-| Responsibility | Entry point |
+| 変更対象 | 読む・編集する場所 |
 | --- | --- |
-| Route, catalog, manifest loading and error screen | `src/main.tsx` |
-| Mounted pages and single-video playback lifecycle | `src/reader.tsx` |
-| Expanded video controls and playback ticks | `src/VideoDialog.tsx` |
-| Work list, publication links, reader menu | `src/WorkLibrary.tsx`, `src/PublicationNav.tsx`, `src/ReaderSidebar.tsx` |
-| Private preview authentication and refresh | `src/PreviewEntry.tsx` |
-| HTTP/R2 serving and publication gates | `src/worker.mjs`, `src/publication-policy.mjs`, `src/preview-worker.mjs` |
-| Package schema, types, validation | `contracts/` (sole distribution contract) |
-| Package publishing and verification | `scripts/publish.mjs`, `contracts/package.mjs` |
+| 起動、URL、作品取得、エラー表示 | `src/main.tsx`、`index.html` |
+| ページ表示、コマ内再生 | `src/reader.tsx` |
+| 拡大動画の操作 | `src/VideoDialog.tsx` |
+| 作品一覧、目次、次話 | `src/WorkLibrary.tsx`、`PublicationNav.tsx`、`ReaderSidebar.tsx`、`EpisodeEnd.tsx` |
+| 非公開プレビューの認証・更新 | `src/PreviewEntry.tsx` |
+| 配信・公開判定 | `src/worker.mjs`、`publication-policy.mjs`、`preview-worker.mjs` |
+| 配信契約 | `contracts/`（正本）、[形式](FORMAT.md) |
+| 転送・公開 | `scripts/publish.mjs`、[公開手順](DEPLOY.md) |
+| Issue/PRの状態・復旧 | [Project自動同期](PROJECT_AUTOMATION.md) |
 
-Routing imports the reader, work library, and private preview entry only when needed. A playback time update stays inside VideoDialog; it must not rebuild the page tree. Indexes derived from the immutable manifest/preview are reused until their inputs change. The first page loads eagerly; later page images use native lazy loading with explicit dimensions. Video remains user-initiated.
+## 性能と操作
 
-## Configuration ownership
+- ルートごとに必要な画面だけを読み込む。取得中も案内を表示する。
+- 動画の時刻更新はVideoDialog内で処理し、本文や目次を再描画しない。
+- manifest・previewの索引は入力が変わった時だけ作る。画像は寸法を指定し、2ページ目以降をlazy読み込みする。動画は操作時だけ取得する。
+- 閉じた読書メニューは`inert`にする。タップ・長押し・スクロール、文字レイヤーの設定を維持する。
+- プレビュー更新の失敗は表示中の版を残して通知する。公開予定の話へ移動リンクを作らない。
 
-| Concern | Source of truth |
+## 設定の正本
+
+| 設定 | ファイル |
 | --- | --- |
-| Dependencies and commands | `package.json`, `package-lock.json` |
-| Web build | `vite.config.js` |
-| Type checking | `tsconfig.json` |
-| Browser matrix and local server | `playwright.config.js` |
-| Production deployment | `wrangler.jsonc` |
-| Development deployment | `wrangler.dev.jsonc` |
-| Validation jobs | `.github/workflows/ci.yml` |
+| 依存・コマンド | `package.json`、`package-lock.json` |
+| ビルド／型検査／ブラウザ試験 | `vite.config.js`／`tsconfig.json`／`playwright.config.js` |
+| production／dev | `wrangler.jsonc`／`wrangler.dev.jsonc` |
+| CI | `.github/workflows/ci.yml` |
 
-The two Wrangler files deliberately specify separate worker names, buckets, catalog keys and authentication requirements. Do not deduplicate them by letting dev inherit production destinations. [DEPLOY.md](DEPLOY.md) owns deployment procedure, [FORMAT.md](FORMAT.md) explains the contract, and [VALIDATION.md](VALIDATION.md) records evidence. Do not copy these into new agent-specific rule files.
+production/devはWorker名、R2、catalog、認証を意図的に分けている。共通化でdevに本番の送信先を継承させない。実際の公開経路とAccessは[公開手順](DEPLOY.md)を確認する。
 
-## Workflow and verification
+## 検証
 
-Use latest dev → feature branch → PR to dev; never push directly to dev/main or weaken protection. Promote dev through a PR only after required checks succeed. Cloudflare production publication is a separate configured build after main.
+Node 22+で`npm ci`後、`npm run lint`、`npm run typecheck`、`npm run build`、`npm test`、`npm run test:ui`、`npm run verify:deploy-config`を実行する。ブラウザ導入は`npx playwright install --with-deps chromium webkit`。
 
-Issue/PR state, `/start`, partial completion, and recovery are defined once in [PROJECT_AUTOMATION.md](PROJECT_AUTOMATION.md). Reuse its generated Draft PR.
+通常ビルドは保存済み人工サンプルを復元する。再生成と実体検証にはFFmpeg/ffprobe、Python/Pillow、DejaVu Sansが必要。制作側の受入試験は`tests/exporter-lock.json`で固定したmanga-macを用意し、`node scripts/exporter-acceptance.mjs /path/to/manga-mac`で実行する。
 
-Node 22+: `npm ci`, `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`, `npm run test:ui`, `npm run verify:deploy-config`. Fixture regeneration/package verification requires FFmpeg/ffprobe, Python/Pillow and DejaVu Sans; ordinary builds materialize the checked fixture.
-
-Compare initial JS separately from all emitted chunks and media; route splitting does not imply an equal reduction in total download size. Run reader tests for playback, expansion, seek/mute, sidebar, private previews and publication routes. Report Chromium/WebKit results separately from real iPhone/Android and deployed HTTP behavior. Artificial fixtures are not AI artwork or production acceptance.
+再生・拡大・シーク・音声、目次、作品間の移動、プレビュー、公開判定を確認する。初期JSと全chunkの合計は別に測る。Chromium/WebKit、実iPhone/Android、本番HTTPは別の結果として[検証記録](VALIDATION.md)へ残す。
