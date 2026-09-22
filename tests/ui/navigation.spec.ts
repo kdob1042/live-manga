@@ -1,4 +1,5 @@
 import {test, expect} from '@playwright/test';
+test.afterEach(async ({page}) => { await page.unrouteAll({behavior: 'wait'}); });
 
 const episode = (episodeId: string, title: string, locked = false) => ({
   episodeId, title, locked, chapterId: null, chapterTitle: null, releaseAt: null,

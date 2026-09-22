@@ -1,4 +1,6 @@
 import {test,expect} from '@playwright/test';
+// Lazy image requests may still be completing after the last UI assertion.
+test.afterEach(async ({page}) => { await page.unrouteAll({behavior:'wait'}); });
 test('one transferred preview supports scene-local tag filters without POST or media changes',async({page,request})=>{
  const manifest=await (await request.get('/demo/live-manga.json')).json();manifest.workId='work';manifest.episodeId='ep';manifest.releaseId='one';
  const second=structuredClone(manifest.pages[0]);second.id='second';second.panels.forEach((p:any)=>{p.id+='-second';});manifest.pages=[manifest.pages[0],second];
@@ -39,4 +41,5 @@ test('failed refresh stays visible and a renewed read key opens the latest revis
  await expect(page.getByRole('alert')).toHaveCount(0);
  await expect(page.locator('.page')).toHaveCount(3);
  await expect(page.locator('.page img').first()).toHaveAttribute('src',/\/revisions\/two\//);
+ await expect.poll(()=>page.locator('.page img').first().evaluate((image:HTMLImageElement)=>image.complete&&image.naturalWidth>0)).toBe(true);
 });
