@@ -32,9 +32,9 @@ export default function PreviewEntry({scope,render}:{scope:{workId:string;episod
  useEffect(()=>{void load(scope.revision);},[scope.workId,scope.episodeId,scope.revision]);
  async function authenticate(event:React.FormEvent){
   event.preventDefault();setLoading(true);setError('');const token=key;setKey('');
-  try{const response=await fetch('/preview-session',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({workId:scope.workId,episodeId:scope.episodeId,token}),signal:AbortSignal.timeout(15000)});if(!response.ok)throw Error('閲覧用キー・有効期限・作品の権限を確認してください');await load(scope.revision);}catch(e){setError(e instanceof Error?e.message:'認証できませんでした');}finally{setLoading(false);}
+  try{const response=await fetch('/preview-session',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({workId:scope.workId,episodeId:scope.episodeId,token}),signal:AbortSignal.timeout(15000)});if(!response.ok)throw Error('閲覧用キー・有効期限・作品の権限を確認してください');await load(preview?null:scope.revision);}catch(e){setError(e instanceof Error?e.message:'認証できませんでした');}finally{setLoading(false);}
  }
- return <>{!preview&&<div className="preview-entry" aria-label="非公開プレビュー"><strong>非公開プレビュー</strong>{loading&&<span role="status">確認中</span>}{error&&<p role="alert">{error}</p>}
- {login&&<form onSubmit={authenticate}><label>閲覧用キー<input type="password" autoComplete="off" value={key} onChange={e=>setKey(e.target.value)} required/></label><button disabled={loading||!key}>開く</button><p>作者用の転送キーではなく、この作品の閲覧権限だけを持つキーを使用します。</p></form>}</div>}
+ return <>{(!preview||error||login)&&<div className={`preview-entry${preview?' preview-notice':''}`} aria-label="非公開プレビュー"><strong>非公開プレビュー</strong>{loading&&<span role="status">確認中…</span>}{error&&<p role="alert">{error}{preview?'。表示中の版はそのまま読めます。':''}</p>}
+ {login?<form onSubmit={authenticate}><label>閲覧用キー<input type="password" autoComplete="off" value={key} onChange={e=>setKey(e.target.value)} required/></label><button disabled={loading||!key}>開く</button><p>この作品の閲覧用キーを入力してください。</p></form>:error&&<button onClick={()=>void load(preview?null:scope.revision)} disabled={loading}>再試行</button>}</div>}
  {preview&&render(preview,base,()=>void load(null),loading)}</>;
 }

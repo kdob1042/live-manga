@@ -2,6 +2,16 @@ import {test,expect} from '@playwright/test';
 
 const motionHit=page=>page.locator('.panel-hit-area');
 
+function addSecondMotionPanel(manifest) {
+ const [target,source]=manifest.pages[0].panels;
+ const poster=manifest.assets.find(asset=>asset.id===source.poster);
+ const ratio=poster.width/poster.height;
+ const height=Math.min(target.frame.height,target.frame.width/ratio),width=height*ratio;
+ target.poster=source.poster;
+ target.artRect={x:target.frame.x+(target.frame.width-width)/2,y:target.frame.y+(target.frame.height-height)/2,width,height};
+ target.motion=structuredClone(source.motion);
+}
+
 test('shared reader shell puts work navigation in a collapsible sidebar',async({page})=>{
  await page.goto('/');
  await expect(page.locator('.reader-shell')).not.toHaveClass(/sidebar-open/);
@@ -15,7 +25,7 @@ test('shared reader shell puts work navigation in a collapsible sidebar',async({
  await expect(page.locator('.reader-shell')).toHaveClass(/sidebar-open/);
  await expect(page.getByRole('button',{name:'読書メニューを閉じる'})).toHaveCount(1);
  await expect(page.locator('.sidebar-toggle')).toHaveText('›');
- await expect(page.locator('.work-list .work-option')).toHaveCount(1);
+ await expect(page.locator('.work-list .work-option')).toHaveCount(0);
  await expect(page.locator('.toc-list a')).toHaveCount(3);
  await expect(page.locator('.sidebar-text-reader')).toBeVisible();
  await page.locator('.sidebar-text-reader > summary').click();
@@ -128,12 +138,13 @@ test('reduced motion never fetches video; mobile layout remains within the viewp
  await expect(page.getByText('静止漫画として読む',{exact:true})).toHaveCount(0);
  await expect(page.locator('.panel-hit-area')).toHaveCount(3);
  await expect(page.locator('video')).toHaveCount(0);
+ await expect(page.locator('.sidebar-toggle')).toHaveCSS('color','rgb(69, 97, 102)');
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(390);
  await page.screenshot({path:'test-results/reader-mobile.png',fullPage:true});
 });
 
 test('switching panels and stale play promises cannot restart old playback',async({page})=>{
- await page.route('**/live-manga.json',async route=>{const response=await route.fetch(),m=await response.json();m.pages[0].panels[0].motion=m.pages[0].panels[1].motion;await route.fulfill({json:m});});
+ await page.route('**/live-manga.json',async route=>{const response=await route.fetch(),m=await response.json();addSecondMotionPanel(m);await route.fulfill({json:m});});
  await page.goto('/');
  const hits=motionHit(page);
  await hits.nth(0).click();
@@ -148,7 +159,7 @@ test('switching panels and stale play promises cannot restart old playback',asyn
 });
 
 test('late play resolution is ignored after another panel starts',async({page})=>{
- await page.route('**/live-manga.json',async r=>{const res=await r.fetch(),m=await res.json();m.pages[0].panels[0].motion=m.pages[0].panels[1].motion;await r.fulfill({json:m});});
+ await page.route('**/live-manga.json',async r=>{const res=await r.fetch(),m=await res.json();addSecondMotionPanel(m);await r.fulfill({json:m});});
  await page.goto('/');
  await page.evaluate(()=>{const play=HTMLMediaElement.prototype.play;HTMLMediaElement.prototype.play=function(){const p=play.call(this);return p.then(()=>new Promise(resolve=>{window.releasePlay=resolve;}));};});
  const hits=motionHit(page);
@@ -171,7 +182,7 @@ test('v2 cover motion is clipped in-panel but expanded video shows the full uncr
     const inset=Math.min(w,h)*.12;
     panel.clip=[[x+inset,y],[x+w,y+inset],[x+w-inset,y+h],[x,y+h-inset]];
     const poster=m.assets.find(a=>a.id===panel.poster),ratio=poster.width/poster.height;
-    let width=w,height=width/ratio;if(height<h){height=h;width=height*ratio;}
+    let width=w*1.2,height=width/ratio;if(height<h*1.2){height=h*1.2;width=height*ratio;}
     panel.artRect={x:x+(w-width)/2,y:y+(h-height)/2,width,height};
    }
   }
@@ -218,6 +229,12 @@ test('PC second click opens one large modal video and restores focus on close',a
  await video.click();
  await expect.poll(()=>video.evaluate(v=>v.paused)).toBe(true);
  await expect(dialog.getByRole('button',{name:'再生'})).toBeVisible();
+ await dialog.getByRole('button',{name:'音声をオン',exact:true}).click();
+ await expect(video).toHaveJSProperty('muted',false);
+ await dialog.getByRole('button',{name:'ミュート',exact:true}).click();
+ await expect(video).toHaveJSProperty('muted',true);
+ await dialog.getByRole('slider',{name:'再生位置'}).press('Home');
+ await expect.poll(()=>video.evaluate(v=>v.currentTime)).toBeLessThan(0.1);
  await dialog.getByRole('button',{name:'再生'}).click();
  await expect.poll(()=>video.evaluate(v=>v.paused)).toBe(false);
  await page.getByRole('button',{name:'拡大動画を閉じる'}).focus();

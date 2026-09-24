@@ -12,9 +12,9 @@ export default function WorkLibrary({catalog, focusWorkId}: {catalog: Publicatio
       <p className="library-lede">公開中の漫画を選んでお読みいただけます。</p>
       {focusWorkId && <p><a href="/" className="library-back">← 作品一覧へ戻る</a></p>}
       {works.length ? <div className="library-grid">{works.map(work => <article className="library-card" key={work.workId}>
-        <h2><a href={`/works/${encodeURIComponent(work.workId)}/`}>{work.title}</a></h2>
+        {!focusWorkId && <h2><a href={`/works/${encodeURIComponent(work.workId)}/`}>{work.title}</a></h2>}
         {work.description && <p>{work.description}</p>}
-        <PublicationNav catalog={{...catalog, works: [work]}} currentWorkId={work.workId}/>
+        <PublicationNav catalog={{...catalog, works: [work]}} currentWorkId={work.workId} showWorkTitle={false}/>
       </article>)}</div> : <p role="status">公開中の作品がありません。</p>}
     </div>
   </main>;
