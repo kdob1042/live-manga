@@ -2,6 +2,16 @@ import {test,expect} from '@playwright/test';
 
 const motionHit=page=>page.locator('.panel-hit-area');
 
+function addSecondMotionPanel(manifest) {
+ const [target,source]=manifest.pages[0].panels;
+ const poster=manifest.assets.find(asset=>asset.id===source.poster);
+ const ratio=poster.width/poster.height;
+ const height=Math.min(target.frame.height,target.frame.width/ratio),width=height*ratio;
+ target.poster=source.poster;
+ target.artRect={x:target.frame.x+(target.frame.width-width)/2,y:target.frame.y+(target.frame.height-height)/2,width,height};
+ target.motion=structuredClone(source.motion);
+}
+
 test('shared reader shell puts work navigation in a collapsible sidebar',async({page})=>{
  await page.goto('/');
  await expect(page.locator('.reader-shell')).not.toHaveClass(/sidebar-open/);
@@ -134,7 +144,7 @@ test('reduced motion never fetches video; mobile layout remains within the viewp
 });
 
 test('switching panels and stale play promises cannot restart old playback',async({page})=>{
- await page.route('**/live-manga.json',async route=>{const response=await route.fetch(),m=await response.json();m.pages[0].panels[0].motion=m.pages[0].panels[1].motion;await route.fulfill({json:m});});
+ await page.route('**/live-manga.json',async route=>{const response=await route.fetch(),m=await response.json();addSecondMotionPanel(m);await route.fulfill({json:m});});
  await page.goto('/');
  const hits=motionHit(page);
  await hits.nth(0).click();
@@ -149,7 +159,7 @@ test('switching panels and stale play promises cannot restart old playback',asyn
 });
 
 test('late play resolution is ignored after another panel starts',async({page})=>{
- await page.route('**/live-manga.json',async r=>{const res=await r.fetch(),m=await res.json();m.pages[0].panels[0].motion=m.pages[0].panels[1].motion;await r.fulfill({json:m});});
+ await page.route('**/live-manga.json',async r=>{const res=await r.fetch(),m=await res.json();addSecondMotionPanel(m);await r.fulfill({json:m});});
  await page.goto('/');
  await page.evaluate(()=>{const play=HTMLMediaElement.prototype.play;HTMLMediaElement.prototype.play=function(){const p=play.call(this);return p.then(()=>new Promise(resolve=>{window.releasePlay=resolve;}));};});
  const hits=motionHit(page);
@@ -172,7 +182,7 @@ test('v2 cover motion is clipped in-panel but expanded video shows the full uncr
     const inset=Math.min(w,h)*.12;
     panel.clip=[[x+inset,y],[x+w,y+inset],[x+w-inset,y+h],[x,y+h-inset]];
     const poster=m.assets.find(a=>a.id===panel.poster),ratio=poster.width/poster.height;
-    let width=w,height=width/ratio;if(height<h){height=h;width=height*ratio;}
+    let width=w*1.2,height=width/ratio;if(height<h*1.2){height=h*1.2;width=height*ratio;}
     panel.artRect={x:x+(w-width)/2,y:y+(h-height)/2,width,height};
    }
   }

@@ -18,14 +18,14 @@ const artFile=`/tmp/live-art-${process.pid}.png`,overlayFile=`/tmp/live-overlay-
 execFileSync('python3',['scripts/fixture_overlay.py',overlayFile,fallbackFile,seed,artFile]);
 const art=await addPNG(artFile,748,1010),overlay=await addPNG(overlayFile,748,1010),fallback=await addPNG(fallbackFile,748,1010);
 const poster1=await make('poster-1','color=c=0xE3E8E9:s=470x470',470,470);
-const poster2=await make('poster-2','color=c=0xE3E8E9:s=254x254',254,254);
+const poster2=await make('poster-2','color=c=0xE3E8E9:s=278x470',278,470);
 const poster3=await make('poster-3','color=c=0xE3E8E9:s=240x240',240,240);
 const poster4=await make('poster-4','color=c=0xE8E7E1:s=508x240',508,240);
 const poster5=await make('poster-5','color=c=0xE3E8E9:s=748x300',748,300);
-const video=await make('motion',"color=c=0xE3E8E9:s=254x254:r=24[bg];color=c=0x27343C:s=54x54:r=24[box];[bg][box]overlay=x='100+45*sin(t*2)':y='92+35*cos(t*1.6)':shortest=1",254,254,true);
+const video=await make('motion',"color=c=0xE3E8E9:s=278x470:r=24[bg];color=c=0x27343C:s=54x54:r=24[box];[bg][box]overlay=x='110+45*sin(t*2)':y='200+70*cos(t*1.6)':shortest=1",278,470,true);
 const panels=[
  {id:'panel-1',frame:{x:0,y:0,width:470,height:470},artRect:{x:0,y:0,width:470,height:470},poster:poster1,text:'静かな午後。'},
- {id:'panel-2',frame:{x:470,y:0,width:278,height:470},artRect:{x:470,y:0,width:254,height:254},poster:poster2,text:'ひとつのコマに、触れてみる。',motion:{asset:video,end:'poster'}},
+ {id:'panel-2',frame:{x:470,y:0,width:278,height:470},artRect:{x:470,y:0,width:278,height:470},poster:poster2,text:'ひとつのコマに、触れてみる。',motion:{asset:video,end:'poster'}},
  {id:'panel-3',frame:{x:0,y:470,width:240,height:240},artRect:{x:0,y:470,width:240,height:240},poster:poster3,text:'視線が、こちらを向く。'},
  {id:'panel-4',frame:{x:240,y:470,width:508,height:240},artRect:{x:240,y:470,width:508,height:240},poster:poster4,text:'言葉になる前の間。'},
  {id:'panel-5',frame:{x:0,y:710,width:748,height:300},artRect:{x:0,y:710,width:748,height:300},poster:poster5,text:'続きは、自分のペースで.'}
