@@ -3,7 +3,7 @@ name: Automation checks
 on:
   pull_request:
     branches: [dev, main]
-    paths: ['.github/scripts/**', '.github/workflows/**', 'AGENTS.md', 'docs/ISSUE_WORKFLOW.md', 'docs/PROJECT_AUTOMATION.md']
+    paths: ['.github/scripts/**', '.github/workflows/**', 'AGENTS.md', 'docs/PROJECT_AUTOMATION.md']
   workflow_dispatch:
 
 permissions:
