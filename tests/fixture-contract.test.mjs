@@ -24,7 +24,14 @@ test('demo fixture demonstrates variable manga composition and one motion panel'
  assert.ok(new Set(page.panels.map(panel=>panel.frame.width)).size>=4);assert.ok(new Set(page.panels.map(panel=>panel.frame.height)).size>=3);
  const motion=page.panels.find(panel=>panel.motion);
  assert.ok(motion);
- assert.ok(motion.frame.height>motion.artRect.height);
+ assert.deepEqual(motion.artRect,motion.frame);
+ for(const assetId of [motion.poster,motion.motion.asset]) {
+  const asset=manifest.assets.find(({id})=>id===assetId);
+  assert.ok(asset);
+  assert.equal(asset.width,motion.frame.width);
+  assert.equal(asset.height,motion.frame.height);
+  assert.ok(bundle.files[asset.path]);
+ }
  const overlayAsset=manifest.assets.find(asset=>asset.id===page.overlay);
  assert.ok(overlayAsset);
  assert.ok(bundle.files[overlayAsset.path].length>1000);
