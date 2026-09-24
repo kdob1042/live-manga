@@ -61,16 +61,27 @@ export function validatePublicationCatalog(value: unknown): PublicationCatalog {
   return value as unknown as PublicationCatalog;
 }
 
+export class LegacyCatalog extends Error {
+  constructor(readonly releaseId: string | null) {
+    super('作品一覧がありません');
+  }
+}
+
 export async function fetchPublicationCatalog(): Promise<PublicationCatalog> {
   const response = await fetch('/catalog.json', {
     headers: {Accept: 'application/json'},
     cache: 'no-cache',
     signal: AbortSignal.timeout(15000),
   });
-  if (!response.ok) throw new Error(response.status === 404 ? '公開一覧がありません' : '公開一覧を取得できません');
+  if (response.status === 404) throw new LegacyCatalog(null);
+  if (!response.ok) throw new Error('公開一覧を取得できません');
   const text = await response.text();
   if (text.length > 1024 * 1024) throw new Error('公開一覧が大きすぎます');
-  return validatePublicationCatalog(JSON.parse(text));
+  const value: unknown = JSON.parse(text);
+  if (text.length <= 1024 && isRecord(value) && !('schemaVersion' in value)) {
+    throw new LegacyCatalog(typeof value.current === 'string' ? value.current : null);
+  }
+  return validatePublicationCatalog(value);
 }
 
 export function findWork(catalog: PublicationCatalog, workId: string) {

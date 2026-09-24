@@ -1,8 +1,8 @@
-import React from 'react';
+import React, {useMemo} from 'react';
 import type {Manifest, Page} from '../contracts/types';
 import type {Preview} from '../contracts/preview-types';
 import PreviewControls from './PreviewControls';
-import PublicationNav from './PublicationNav';
+import PublicationNav, {workHref} from './PublicationNav';
 import type {PublicationCatalog, PublicationFormat} from './publication-client';
 
 type Props = {
@@ -27,9 +27,9 @@ type Props = {
 
 const pageLabel = (page: Page, index: number) => `${String(index + 1).padStart(2, '0')}ページ`;
 
-function pageNotes(preview: Preview, page: Page) {
+function pageNotes(panels: Map<string, Preview['panels'][number]>, page: Page) {
   return page.panels.flatMap(panel => {
-    const state = preview.panels.find(item => item.id === panel.id);
+    const state = panels.get(panel.id);
     if (!state) return [];
     const notes = [
       state.art === 'pending' ? '作画待ち' : '',
@@ -45,16 +45,16 @@ export default function ReaderSidebar({
   hideOverlayDuringMotion, refreshing, onClose, onHideOverlayDuringMotionChange, onTagsChange, onRefresh,
   catalog, currentWorkId, currentFormat, currentEpisodeId,
 }: Props) {
+  const previewPanels = useMemo(() => new Map(preview?.panels.map(p => [p.id, p]) ?? []), [preview]);
   const tocPages = pages
     .map((page, index) => ({page, index}))
     .filter(({page}) => visiblePageIds.has(page.id));
   const textPages = tocPages.filter(({page}) => page.panels.some(panel => panel.text));
-  const currentHref = typeof window === 'undefined' ? '#' : window.location.href;
-  const workHref = currentHref.includes('?preview=') ? currentHref : `/?release=${encodeURIComponent(manifest.releaseId)}`;
+  const currentWork = catalog?.works.find(work => work.workId === currentWorkId);
 
   return <>
     {open && <div className="sidebar-backdrop" role="presentation" onClick={onClose}/>} 
-    <aside id="reader-sidebar" className={`reader-sidebar${open ? ' is-open' : ''}`} aria-label="読書メニュー" aria-hidden={!open}>
+    <aside id="reader-sidebar" className={`reader-sidebar${open ? ' is-open' : ''}`} aria-label="読書メニュー" aria-hidden={!open} inert={!open}>
       <div className="sidebar-head">
         <div>
           <p className="sidebar-kicker">LIVE MANGA</p>
@@ -64,23 +64,21 @@ export default function ReaderSidebar({
 
       <div className="sidebar-content">
         <section className="sidebar-work-section" aria-labelledby="reader-work-heading">
-          <h1 className="sidebar-title">{manifest.title}</h1>
-          <p id="reader-work-heading" className="sidebar-section-label">作品</p>
-          {catalog ? <PublicationNav catalog={catalog} currentWorkId={currentWorkId} currentFormat={currentFormat} currentEpisodeId={currentEpisodeId} compact/> : <nav className="work-list" aria-label="作品一覧">
-            <a className="work-option" href={workHref} aria-current="page">
-            <span className="work-option-mark" aria-hidden="true">●</span>
-            <span><strong>{manifest.title}</strong><small>{preview ? '制作途中プレビュー' : `第${manifest.episodeId}話 · ${manifest.releaseId}`}</small></span>
-            </a>
-          </nav>}
+          <h1 id="reader-work-heading" className="sidebar-title">{manifest.title}</h1>
+          {catalog && <PublicationNav catalog={currentWork ? {...catalog, works: [currentWork]} : catalog} currentWorkId={currentWorkId} currentFormat={currentFormat} currentEpisodeId={currentEpisodeId} compact showWorkTitle={!currentWork}/>}
+          {preview && <p className="sidebar-context">制作途中プレビュー</p>}
           {preview && <div className="preview-summary"><span>保存時点 {new Date(preview.savedAt).toLocaleString('ja-JP')}</span>{onRefresh && <button type="button" onClick={onRefresh} disabled={refreshing}>{refreshing ? '確認中…' : '最新版を開く'}</button>}</div>}
-          <a className="sidebar-home-link" href={currentHref.includes('?preview=') ? '/' : '#reader-sidebar'} onClick={event => { if (!currentHref.includes('?preview=')) { event.preventDefault(); onClose(); } }}>作品トップ</a>
+          <div className="sidebar-home-links">
+            {currentWork && <a className="sidebar-home-link" href={workHref(currentWork.workId)}>作品トップ</a>}
+            <a className="sidebar-home-link" href="/">作品一覧</a>
+          </div>
         </section>
 
         <section className="sidebar-toc-section" aria-labelledby="reader-toc-heading">
           <p id="reader-toc-heading" className="sidebar-section-label">目次</p>
           <nav aria-label="ページ一覧" className="toc-list">
             {tocPages.map(({page, index}) => {
-              const notes = preview ? pageNotes(preview, page) : [];
+              const notes = preview ? pageNotes(previewPanels, page) : [];
               return <a key={page.id} href={`#page-${page.id}`} onClick={onClose}>
                 <span>{pageLabel(page, index)}</span>
                 <small>{page.panels.length}コマ{notes.length ? ` · ${[...new Set(notes)].join('・')}` : ''}</small>

@@ -1,18 +1,12 @@
-# Development
+# 開発の入口
 
-Read README.md, docs/FORMAT.md, docs/DEPLOY.md, and the current issues first.
-Start from latest dev, create a feature branch, open a PR to dev. Never push directly to dev/main or weaken protection. Promote dev to main only after required CI succeeds. Production deployment is a separate configured Cloudflare Git build after main.
+1. [README](README.md)で操作と役割を確認する。
+2. [開発案内](docs/DEVELOPMENT.md)の担当箇所と、作業対象のIssue・PRを読む。契約・公開設定は変更する場合だけ読む。
+3. 最新devを取り込み、Issueの`/start`で作成された既存Draft PRで作業する。PRはdev向け。dev/mainへ直接pushせず、保護設定を弱めない。
 
-contracts/ is the sole distribution contract. manga-mac vendors a commit + SHA256 pinned copy via its sync script. Do not add generation, Blender, project databases, credentials, or unpublished source to the reader.
+- 配信契約の正本は`contracts/`。manga-macは固定版を取り込む。原稿、生成処理、制作DB、認証情報を読者アプリへ持ち込まない。
+- Issue/PRの開始・完了・復旧は[Project自動同期](docs/PROJECT_AUTOMATION.md)に従う。`status:*`や`agent:start`を手動管理しない。
+- PR本文に独立した`Refs #番号`行を置く。全受入条件を満たした場合だけ`Closes #番号`にする。部分完了は`Parent: #番号`付きの残件Issueを先に作る。
+- 必須検証が通ってからreadyにする。自動ブラウザ試験、実機、本番配信の結果は分ける。人工サンプルをAI生成作品や実作品の検証実績と呼ばない。
 
-Run npm ci, npm run lint, npm run typecheck, npm test, npm run build, npm run test:ui. Fixture generation needs FFmpeg/ffprobe, Python/Pillow and DejaVu Sans. Node 22+.
-Report automated Chromium/WebKit results separately from real iPhone/Android and production deployment. Never label artificial fixtures as AI-generated artwork. Keep unverified conditions open in the issues.
-
-
-## Issue/PR task state
-
-- Issue open/closed and PRs are the source of truth; Project is a derived view. Do not add or manually maintain status:* labels.
-- Before implementation, the agent comments exactly /start on the Issue. Actions adds its internal marker, creates an empty-commit Draft PR from latest dev, or reuses the existing PR. Wait for it and implement on that branch; do not add agent:start manually or create a duplicate PR.
-- New Issue → Todo; open PR (including Draft) → In Progress; current CI failure, change request, or unfinished Issue without an open replacement PR → Needs attention; closed Issue → Done. Ready for review stays In Progress.
-- Put Refs #<number> on its own line. Only change to Closes #<number> when ALL acceptance criteria are met. For partial work, create a follow-up Issue first and put `Parent: #<number>` on its own line in that Issue. The synchronizer closes the parent after the Refs PR merges and the follow-up exists; without that Issue, the parent remains open and needs attention.
-- Mark the PR ready only after required checks and acceptance criteria pass. Preserve the dev-first, PR-based workflow. Do not use Project Done to close Issues in reverse; see docs/PROJECT_AUTOMATION.md for recovery.
+説明と設定は担当ファイルに一度だけ書き、他の指示書からはリンクする。
